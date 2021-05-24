@@ -1,3 +1,14 @@
+# vs code configuration
+.vscode/
+
+# Cache
+cached_dir
+
+# Test file
+huggingface_test.py
+tensorflow_test.py
+tfdatasets_test.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
