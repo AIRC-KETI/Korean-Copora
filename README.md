@@ -174,6 +174,5 @@ manual_dir/
 
 ## TODO
 
-[ ] Huggingface datasets KLUE benchmark, Kor_corpora dataset 생성
-
-[ ] NIKL DP, MP, LS ClassLabel로 변경.
+- [ ] Huggingface datasets KLUE benchmark, Kor_corpora dataset 생성
+- [ ] NIKL DP, MP, LS ClassLabel로 변경.
