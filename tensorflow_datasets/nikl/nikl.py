@@ -72,20 +72,55 @@ _NER_TAGS = [
   'PS', # PERSON
   'LC', # LOCATION
   'OG', # ORGANIZATION
-  'AF', # ARTIFACT
   'DT', # DATE
   'TI', # TIME
+  'QT', # QUANTITY
+  'AF', # ARTIFACT
   'CV', # CIVILIZATION
   'AM', # ANIMAL
   'PT', # PLANT
-  'QT', # QUANTITY
   'FD', # STUDY_FIELD
   'TR', # THEORY
   'EV', # EVENT
   'MT', # MATERIAL
   'TM' # TERM
 ]
+
 _NE_LABEL_FEATURE = tfds.features.ClassLabel(names=_NER_TAGS)
+
+_NER_IOB2_TAGS = [
+    'O',
+    'B-PS', # PERSON
+    'I-PS', # PERSON
+    'B-LC', # LOCATION
+    'I-LC', # LOCATION
+    'B-OG', # ORGANIZATION
+    'I-OG', # ORGANIZATION
+    'B-DT', # DATE
+    'I-DT', # DATE
+    'B-TI', # TIME
+    'I-TI', # TIME
+    'B-QT', # QUANTITY
+    'I-QT', # QUANTITY
+    'B-AF', # ARTIFACT
+    'I-AF', # ARTIFACT
+    'B-CV', # CIVILIZATION
+    'I-CV', # CIVILIZATION
+    'B-AM', # ANIMAL
+    'I-AM', # ANIMAL
+    'B-PT', # PLANT
+    'I-PT', # PLANT
+    'B-FD', # STUDY_FIELD
+    'I-FD', # STUDY_FIELD
+    'B-TR', # THEORY
+    'I-TR', # THEORY
+    'B-EV', # EVENT
+    'I-EV', # EVENT
+    'B-MT', # MATERIAL
+    'I-MT', # MATERIAL
+    'B-TM' # TERM
+    'I-TM' # TERM
+]
 
 _NE_LABEL_SEQ_FEATURE = tfds.features.Sequence({
     "id": tf.int32,
@@ -970,6 +1005,9 @@ class Nikl(tfds.core.GeneratorBasedBuilder):
                     dl_manager.manual_dir,
                     self.builder_config.data_root
                 ))
+        
+        if self.builder_config.name.startswith('ne.v'):
+            self.info._metadata = tfds.core.MetadataDict(ibo2=_NER_IOB2_TAGS)
 
         if self.builder_config.additional_data_root is not None:
             additional_data_path = []

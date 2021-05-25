@@ -1117,6 +1117,9 @@ class Klue(tfds.core.GeneratorBasedBuilder):
             with tf.io.gfile.GFile(path_kv['ontology']) as f:
                 ontology = json.load(f)
                 self.info._metadata = tfds.core.MetadataDict(**ontology)
+        
+        if self.builder_config.name == 'ner':
+            self.info._metadata = tfds.core.MetadataDict(ibo2=_KLUE_NER_IOB2_TAGS)
 
         # TODO(klue): Returns the Dict[split names, Iterator[Key, Example]]
         return {
