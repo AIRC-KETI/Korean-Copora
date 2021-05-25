@@ -4,6 +4,9 @@
 # Cache
 cached_dir
 
+# Data
+data
+
 # Test file
 huggingface_test.py
 tensorflow_test.py
