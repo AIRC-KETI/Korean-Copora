@@ -42,7 +42,7 @@ NIKL_TASK_SET = [
 
 
 for nikl_task in NIKL_TASK_SET:
-    dataset = datasets.load_dataset("nikl_tmp.py", nikl_task, data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
+    dataset = datasets.load_dataset("nikl.py", nikl_task, data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
     for data in dataset['train']:
         print(data)
         break
