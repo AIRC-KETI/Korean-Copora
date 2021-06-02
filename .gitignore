@@ -11,6 +11,7 @@ data
 huggingface_test.py
 tensorflow_test.py
 tfdatasets_test.py
+*.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

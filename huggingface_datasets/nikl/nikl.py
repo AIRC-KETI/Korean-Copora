@@ -1,15 +1,48 @@
+# Copyright 2021 san kim
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """nikl dataset."""
 import os
 import csv
 import json
-import glob
 import copy
+import glob
 import hashlib
 import functools
 import unicodedata
 
 import kss
 import datasets
+
+## --- Change Logsd
+#tfds.core.Version --> datasets.Version
+#tfds.features.Sequence --> datasets.Sequence
+#dtype --> datasets.Value("dtype")
+#tfds.features.Text() --> datasets.Value("string")
+#tfds.features.ClassLabel(names=label_list) --> datasets.ClassLabel(names=label_list)
+#tfds.features.FeaturesDict --> datasets.Features
+#tfds.Split.TRAIN --> datasets.Split.TRAIN
+#tfds.core.DatasetInfo --> datasets.DatasetInfo
+#self.builder_config.feature --> self.config.feature
+#tfds.download.DownloadManager --> datasets.DownloadManager
+#tf.io.gfile.glob --> glob.glob
+#tfds.core.MetadataDict --> 
+#tfds.core.BuilderConfig --> datasets.BuilderConfig
+#tfds.core.GeneratorBasedBuilder --> datasets.GeneratorBasedBuilder
+#tf.io.gfile.GFile --> open
+#return {k: self._generate_examples(in_files, v) for k, v in split_fn_kv.items()} --> [datasets.SplitGenerator(name=k, gen_kwargs={'path_list': in_files, 'split_fn': v}) for k, v in split_fn_kv.items()]
+# # tf.compat.as_text(text) --> text
 
 
 def _is_punctuation(char):
@@ -31,7 +64,7 @@ It should also contain any processing which has been applied (if any),
 _CITATION = """
 """
 
-_VERSION = datasets.Version("1.0.0", "")
+_VERSION = datasets.Version('1.0.0', "")
 
 
 _DATASET_ROOT = {
@@ -72,27 +105,62 @@ _NER_TAGS = [
   'PS', # PERSON
   'LC', # LOCATION
   'OG', # ORGANIZATION
-  'AF', # ARTIFACT
   'DT', # DATE
   'TI', # TIME
+  'QT', # QUANTITY
+  'AF', # ARTIFACT
   'CV', # CIVILIZATION
   'AM', # ANIMAL
   'PT', # PLANT
-  'QT', # QUANTITY
   'FD', # STUDY_FIELD
   'TR', # THEORY
   'EV', # EVENT
   'MT', # MATERIAL
   'TM' # TERM
 ]
+
 _NE_LABEL_FEATURE = datasets.ClassLabel(names=_NER_TAGS)
+
+_NER_IOB2_TAGS = [
+    'O',
+    'B-PS', # PERSON
+    'I-PS', # PERSON
+    'B-LC', # LOCATION
+    'I-LC', # LOCATION
+    'B-OG', # ORGANIZATION
+    'I-OG', # ORGANIZATION
+    'B-DT', # DATE
+    'I-DT', # DATE
+    'B-TI', # TIME
+    'I-TI', # TIME
+    'B-QT', # QUANTITY
+    'I-QT', # QUANTITY
+    'B-AF', # ARTIFACT
+    'I-AF', # ARTIFACT
+    'B-CV', # CIVILIZATION
+    'I-CV', # CIVILIZATION
+    'B-AM', # ANIMAL
+    'I-AM', # ANIMAL
+    'B-PT', # PLANT
+    'I-PT', # PLANT
+    'B-FD', # STUDY_FIELD
+    'I-FD', # STUDY_FIELD
+    'B-TR', # THEORY
+    'I-TR', # THEORY
+    'B-EV', # EVENT
+    'I-EV', # EVENT
+    'B-MT', # MATERIAL
+    'I-MT', # MATERIAL
+    'B-TM' # TERM
+    'I-TM' # TERM
+]
 
 _NE_LABEL_SEQ_FEATURE = datasets.Sequence({
     "id": datasets.Value("int32"),
     "form": datasets.Value("string"),
     "begin": datasets.Value("int32"),
     "end": datasets.Value("int32"),
-    "label": datasets.Value("string"),
+    "label": _NE_LABEL_FEATURE,
 })
 
 _WSD_SEQ_FEATURE = datasets.Sequence({
@@ -555,6 +623,7 @@ class NiklConfig(datasets.BuilderConfig):
                  additional_data_root=None,
                  homepage='https://corpus.korean.go.kr/',
                  split_fn=None,
+                 metadata=None,
                  **kwargs):
         super(NiklConfig, self).__init__(
             name=name,
@@ -569,6 +638,7 @@ class NiklConfig(datasets.BuilderConfig):
         self.additional_data_root = additional_data_root
         self.homepage = homepage
         self.split_fn = split_fn
+        self.metadata = metadata
 
 
 
@@ -949,7 +1019,6 @@ class Nikl(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-
     def _split_generators(self, dl_manager: datasets.DownloadManager):
         """Returns SplitGenerators."""
         path_kv = {}
@@ -967,6 +1036,9 @@ class Nikl(datasets.GeneratorBasedBuilder):
                     dl_manager.manual_dir,
                     self.config.data_root
                 ))
+        
+        # if self.config.name.startswith('ne.v'):
+        #     self.info._metadata = tfds.core.MetadataDict(ibo2=_NER_IOB2_TAGS)
 
         if self.config.additional_data_root is not None:
             additional_data_path = []
@@ -986,6 +1058,7 @@ class Nikl(datasets.GeneratorBasedBuilder):
             for sp_s_key in self.config.split_fn['source']:
                 in_files.extend(path_kv[sp_s_key])
             split_fn_kv = self.config.split_fn['split']
+            #return {k: self._generate_examples(in_files, v) for k, v in split_fn_kv.items()}
             return [
                 datasets.SplitGenerator(name=k, gen_kwargs={'path_list': in_files, 'split_fn': v}) for k, v in split_fn_kv.items()
             ]
@@ -994,7 +1067,6 @@ class Nikl(datasets.GeneratorBasedBuilder):
         return [
                 datasets.SplitGenerator(name=k, gen_kwargs={'path_list': v}) for k, v in path_kv.items()
         ]
-
 
     def _generate_examples(self, path_list, split_fn=None):
         """Yields examples."""
@@ -1018,4 +1090,5 @@ class Nikl(datasets.GeneratorBasedBuilder):
             except Exception as e:
                 print(e)
 
-# datasets.load_datasets("huggingface_datasets/nikl/nikl.py", "summarization.v1.0.topic", data_dir="/root/nfs3/ket5/data/raw_corpus/ko", cache_dir="cached_dir/huggingface_datasets")
+# tfds build --data_dir ../../tmp/tensorflow_datasets --manual_dir ../../data/raw_corpus/ko --config summarization.v1.0.summary.split
+# tfds build --data_dir ../../tmp/tensorflow_datasets --manual_dir ../../data/raw_corpus/ko --config summarization.v1.0.topic.split
