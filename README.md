@@ -158,6 +158,8 @@ manual_dir/
 | nikl | ne.2020.v1.0.split | 개체명 인식 2020 버젼, split train, test |
 | nikl | cr.2020.v1.0 | Coreference Resolution 데이터 |
 | nikl | cr.2020.full.v1.0 | CR 데이터 그대로 parsing |
+| nikl | za.2020.v1.0 | 무형어 복원 데이터 |
+| nikl | za.2020.full.v1.0 | ZA 데이터 그대로 parsing |
 | kor_corpora | nsmc | naver sentiment movie corpus task |
 | kor_corpora | nsmc.split | deterministic하게 train, validation, test split을 나눔. |
 | kor_corpora | qpair | question pair task. 두 question의 동일 여부 판단. |

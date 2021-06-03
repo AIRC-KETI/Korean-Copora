@@ -828,29 +828,56 @@ _NE2020_FEATURE = datasets.Features({
         _WORD_SEQ_FEATURE,
 })
 
+# _CR2020_FULL_FEATURE = datasets.Features({
+#     'id': datasets.Value("string"),
+#     'metadata': datasets.Features({
+#         'title': datasets.Value("string"),
+#         'author': datasets.Value("string"),
+#         'publisher': datasets.Value("string"),
+#         'date': datasets.Value("string"),
+#         'topic': datasets.Value("string"),
+#     }),
+#     'sentence': datasets.Sequence({
+#         'id': datasets.Value("string"),
+#         'form': datasets.Value("string"),
+#         'word': _WORD_SEQ_FEATURE
+#     }),
+#     'CR': datasets.Sequence({
+#         "mention": datasets.Sequence({
+#             'sentence_id': datasets.Value("string"),
+#             'form': datasets.Value("string"),
+#             'begin': datasets.Value("int32"),
+#             'end': datasets.Value("int32"),
+#             'NE_id': datasets.Value("int32"),
+#         })
+#     })
+# })
+
+# feature order
 _CR2020_FULL_FEATURE = datasets.Features({
+    'CR': datasets.Sequence({
+        "mention": datasets.Sequence({
+            'NE_id': datasets.Value("int32"),
+            'begin': datasets.Value("int32"),
+            'end': datasets.Value("int32"),
+            'form': datasets.Value("string"),
+            'sentence_id': datasets.Value("string"),
+        })
+    }),
     'id': datasets.Value("string"),
     'metadata': datasets.Features({
-        'title': datasets.Value("string"),
         'author': datasets.Value("string"),
-        'publisher': datasets.Value("string"),
         'date': datasets.Value("string"),
+        'publisher': datasets.Value("string"),
+        'title': datasets.Value("string"),
         'topic': datasets.Value("string"),
     }),
     'sentence': datasets.Sequence({
-        'id': datasets.Value("string"),
         'form': datasets.Value("string"),
+        'id': datasets.Value("string"),
         'word': _WORD_SEQ_FEATURE
     }),
-    'CR': datasets.Sequence({
-        "mention": datasets.Sequence({
-            'sentence_id': datasets.Value("string"),
-            'form': datasets.Value("string"),
-            'begin': datasets.Value("int32"),
-            'end': datasets.Value("int32"),
-            'NE_id': datasets.Value("int32"),
-        })
-    })
+    
 })
 
 _CR2020_FEATURE = datasets.Features({
@@ -865,6 +892,128 @@ _CR2020_FEATURE = datasets.Features({
             }
     )})
 })
+
+_ZA_ANTECEDENT_TYPE = [
+    "subject",
+    "object"
+]
+_ZA_ANTECEDENT_TYPE_FEATURE = datasets.ClassLabel(names=_ZA_ANTECEDENT_TYPE)
+
+_ZA2020_FULL_FEATURE = datasets.Features({
+    'ZA': datasets.Sequence({
+        "antecedent": datasets.Sequence({
+            'begin': datasets.Value("int32"),
+            'end': datasets.Value("int32"),
+            'form': datasets.Value("string"),
+            'sentence_id': datasets.Value("string"),
+            'type': _ZA_ANTECEDENT_TYPE_FEATURE,            
+        }),
+        "predicate": datasets.Features({
+            'begin': datasets.Value("int32"),
+            'end': datasets.Value("int32"),
+            'form': datasets.Value("string"),
+            'sentence_id': datasets.Value("string"),
+        }),
+    }),
+    'id': datasets.Value("string"),
+    'metadata': datasets.Features({
+        'author': datasets.Value("string"),
+        'date': datasets.Value("string"),
+        'publisher': datasets.Value("string"),
+        'title': datasets.Value("string"),
+        'topic': datasets.Value("string"),
+    }),
+    'sentence': datasets.Sequence({
+        'form': datasets.Value("string"),
+        'id': datasets.Value("string"),
+        'word': _WORD_SEQ_FEATURE
+    }),
+})
+
+
+_ZA2020_FEATURE = datasets.Features({
+    'id': datasets.Value("string"),
+    'text': datasets.Value("string"),
+    'ZA': datasets.Sequence({
+        "predicate": datasets.Features({
+            'form': datasets.Value("string"),
+            'begin': datasets.Value("int32"),
+            'end': datasets.Value("int32"),
+        }),
+        "antecedent": datasets.Sequence({
+            'form': datasets.Value("string"),
+            'type': _ZA_ANTECEDENT_TYPE_FEATURE,
+            'begin': datasets.Value("int32"),
+            'end': datasets.Value("int32"),
+        })
+    })
+})
+
+def _parsing_za(file_path):
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        for doc in obj['document']:
+            _id = doc['id']
+            _metadata = doc['metadata']
+            _sentence = doc['sentence']
+            sent_dict = {}
+            _offset = 0
+            sents = []
+            for v in _sentence:
+                sents.append(v['form'])
+
+                sent_dict[v["id"]] = {
+                    "form": v["form"],
+                    "len": len(v["form"]),
+                    "offset": _offset,
+                }
+                _offset += len(v["form"]) + 1         
+
+            _za = doc['ZA']
+
+            text = ' '.join(sents)
+            za = []
+            for _pre_ant in _za:
+                ante = []
+                for _ante in _pre_ant["antecedent"]:
+                    _sentid = _ante['sentence_id']
+                    
+                    if _sentid in sent_dict:
+                        ante.append({
+                            'form': _ante['form'],
+                            'type': _ante['type'],
+                            'begin': _ante['begin'] + sent_dict[_sentid]['offset'],
+                            'end': _ante['end'] + sent_dict[_sentid]['offset'],
+                        })
+                    else:
+                        ante.append({
+                            'form': _ante['form'],
+                            'type': _ante['type'],
+                            'begin': _ante['begin'],
+                            'end': _ante['end'],
+                        })
+                predicate = _pre_ant['predicate']
+                _sentid = predicate['sentence_id']
+                new_predicate = {
+                    'form': predicate['form'],
+                    'begin': predicate['begin'],
+                    'end': predicate['end'],
+                }
+                if _sentid in sent_dict:
+                    new_predicate = {
+                        'form': predicate['form'],
+                        'begin': predicate['begin'] + sent_dict[_sentid]['offset'],
+                        'end': predicate['end'] + sent_dict[_sentid]['offset'],
+                    }
+                za.append({
+                    "predicate": new_predicate,
+                    "antecedent": ante
+                })
+            yield _id, {
+                'id': _id,
+                'text': text,
+                'ZA': za,
+            }
 
 def _base_proc(obj):
     return obj['id'], obj
@@ -1557,6 +1706,22 @@ class Nikl(datasets.GeneratorBasedBuilder):
             name='cr.2020.full.v1.0',
             data_root=_DATASET_ROOT['cr.2020.v1.0'],
             feature=_CR2020_FULL_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['*.json']},
+            reading_fn=_parsing_doc,
+            parsing_fn=_base_proc,
+        ),
+        NiklConfig(
+            name='za.2020.v1.0',
+            data_root=_DATASET_ROOT['za.2020.v1.0'],
+            feature=_ZA2020_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['*.json']},
+            reading_fn=_parsing_za,
+            parsing_fn=lambda x:x,
+        ),
+        NiklConfig(
+            name='za.2020.full.v1.0',
+            data_root=_DATASET_ROOT['za.2020.v1.0'],
+            feature=_ZA2020_FULL_FEATURE,
             data_sp_path={datasets.Split.TRAIN: ['*.json']},
             reading_fn=_parsing_doc,
             parsing_fn=_base_proc,

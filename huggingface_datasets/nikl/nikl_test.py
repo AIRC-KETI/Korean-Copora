@@ -42,9 +42,11 @@ NIKL_TASK_SET = [
     "ne.2020.v1.0.split",
     "cr.2020.v1.0",
     "cr.2020.full.v1.0",
+    'za.2020.v1.0',
+    'za.2020.full.v1.0',
 ]
 
-dataset = datasets.load_dataset("nikl.py", "cr.2020.full.v1.0", data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
+dataset = datasets.load_dataset("nikl.py", "za.2020.full.v1.0", data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
 for data in dataset['train']:
     print(data)
     break

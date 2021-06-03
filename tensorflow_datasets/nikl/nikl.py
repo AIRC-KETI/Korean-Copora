@@ -50,9 +50,9 @@ _DATASET_ROOT = {
     'ne.2020.v1.0': 'NIKL/v1.0/NE_2020',
     'cr.2020.v1.0': 'NIKL/v1.0/CR_2020',
     'za.2020.v1.0': 'NIKL/v1.0/ZA_2020',
-    'dialogue.2020.v1.0': 'NIKL/v1.0/DIALOGUE_2020',
-    'newspaper.2020.v1.0': 'NIKL/v1.0/NEWSPAPER_2020',
-    'spoken.v1.1': 'NIKL/v1.1/SPOKEN',
+    'dialogue.2020.v1.0': 'NIKL/v1.0/DIALOGUE_2020', #TODO
+    'newspaper.2020.v1.0': 'NIKL/v1.0/NEWSPAPER_2020', #TODO
+    'spoken.v1.1': 'NIKL/v1.1/SPOKEN', #TODO
 }
 
 _SPOKEN_V1_TYPO = {"principal_residence": "pricipal_residence"}
@@ -836,6 +836,127 @@ _CR2020_FEATURE = tfds.features.FeaturesDict({
     })
 })
 
+_ZA_ANTECEDENT_TYPE = [
+    "subject",
+    "object"
+]
+_ZA_ANTECEDENT_TYPE_FEATURE = tfds.features.ClassLabel(names=_ZA_ANTECEDENT_TYPE)
+
+_ZA2020_FULL_FEATURE = tfds.features.FeaturesDict({
+    'id': tfds.features.Text(),
+    'metadata': tfds.features.FeaturesDict({
+        'title': tfds.features.Text(),
+        'author': tfds.features.Text(),
+        'publisher': tfds.features.Text(),
+        'date': tfds.features.Text(),
+        'topic': tfds.features.Text(),
+    }),
+    'sentence': tfds.features.Sequence({
+        'id': tfds.features.Text(),
+        'form': tfds.features.Text(),
+        'word': _WORD_SEQ_FEATURE
+    }),
+    'ZA': tfds.features.Sequence({
+        "predicate": tfds.features.FeaturesDict({
+            'form': tfds.features.Text(),
+            'sentence_id': tfds.features.Text(),
+            'begin': tf.int32,
+            'end': tf.int32,
+        }),
+        "antecedent": tfds.features.Sequence({
+            'form': tfds.features.Text(),
+            'type': _ZA_ANTECEDENT_TYPE_FEATURE,
+            'sentence_id': tfds.features.Text(),
+            'begin': tf.int32,
+            'end': tf.int32,
+        })
+    })
+})
+
+_ZA2020_FEATURE = tfds.features.FeaturesDict({
+    'id': tfds.features.Text(),
+    'text': tfds.features.Text(),
+    'ZA': tfds.features.Sequence({
+        "predicate": tfds.features.FeaturesDict({
+            'form': tfds.features.Text(),
+            'begin': tf.int32,
+            'end': tf.int32,
+        }),
+        "antecedent": tfds.features.Sequence({
+            'form': tfds.features.Text(),
+            'type': _ZA_ANTECEDENT_TYPE_FEATURE,
+            'begin': tf.int32,
+            'end': tf.int32,
+        })
+    })
+})
+
+def _parsing_za(file_path):
+    with tf.io.gfile.GFile(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        for doc in obj['document']:
+            _id = doc['id']
+            _metadata = doc['metadata']
+            _sentence = doc['sentence']
+            sent_dict = {}
+            _offset = 0
+            sents = []
+            for v in _sentence:
+                sents.append(v['form'])
+
+                sent_dict[v["id"]] = {
+                    "form": v["form"],
+                    "len": len(v["form"]),
+                    "offset": _offset,
+                }
+                _offset += len(v["form"]) + 1         
+
+            _za = doc['ZA']
+
+            text = ' '.join(sents)
+            za = []
+            for _pre_ant in _za:
+                ante = []
+                for _ante in _pre_ant["antecedent"]:
+                    _sentid = _ante['sentence_id']
+                    
+                    if _sentid in sent_dict:
+                        ante.append({
+                            'form': _ante['form'],
+                            'type': _ante['type'],
+                            'begin': _ante['begin'] + sent_dict[_sentid]['offset'],
+                            'end': _ante['end'] + sent_dict[_sentid]['offset'],
+                        })
+                    else:
+                        ante.append({
+                            'form': _ante['form'],
+                            'type': _ante['type'],
+                            'begin': _ante['begin'],
+                            'end': _ante['end'],
+                        })
+                predicate = _pre_ant['predicate']
+                _sentid = predicate['sentence_id']
+                new_predicate = {
+                    'form': predicate['form'],
+                    'begin': predicate['begin'],
+                    'end': predicate['end'],
+                }
+                if _sentid in sent_dict:
+                    new_predicate = {
+                        'form': predicate['form'],
+                        'begin': predicate['begin'] + sent_dict[_sentid]['offset'],
+                        'end': predicate['end'] + sent_dict[_sentid]['offset'],
+                    }
+                za.append({
+                    "predicate": new_predicate,
+                    "antecedent": ante
+                })
+            yield _id, {
+                'id': _id,
+                'text': text,
+                'ZA': za,
+            }
+
 def _base_proc(obj):
     return obj['id'], obj
 
@@ -1531,6 +1652,22 @@ class Nikl(tfds.core.GeneratorBasedBuilder):
             reading_fn=_parsing_doc,
             parsing_fn=_base_proc,
         ),
+        NiklConfig(
+            name='za.2020.v1.0',
+            data_root=_DATASET_ROOT['za.2020.v1.0'],
+            feature=_ZA2020_FEATURE,
+            data_sp_path={tfds.Split.TRAIN: ['*.json']},
+            reading_fn=_parsing_za,
+            parsing_fn=lambda x:x,
+        ),
+        NiklConfig(
+            name='za.2020.full.v1.0',
+            data_root=_DATASET_ROOT['za.2020.v1.0'],
+            feature=_ZA2020_FULL_FEATURE,
+            data_sp_path={tfds.Split.TRAIN: ['*.json']},
+            reading_fn=_parsing_doc,
+            parsing_fn=_base_proc,
+        ),
     ]
 
     
@@ -1658,5 +1795,5 @@ class Nikl(tfds.core.GeneratorBasedBuilder):
             except Exception as e:
                 print(e)
 
-# tfds build --data_dir ../../tmp/tensorflow_datasets --manual_dir ../../data/raw_corpus/ko --config summarization.v1.0.summary.split
+# tfds build --data_dir ../../cached_dir/tensorflow_datasets --manual_dir ../../data --config summarization.v1.0.summary.split
 # tfds build --data_dir ../../tmp/tensorflow_datasets --manual_dir ../../data/raw_corpus/ko --config summarization.v1.0.topic.split
