@@ -37,12 +37,20 @@ NIKL_TASK_SET = [
     "summarization.v1.0.topic.split",
     "paraphrase.v1.0",
     "paraphrase.v1.0.split",
-    "cola.v1.0"
+    "cola.v1.0",
+    "ne.2020.v1.0",
+    "ne.2020.v1.0.split",
+    "cr.2020.v1.0",
+    "cr.2020.full.v1.0",
 ]
 
+dataset = datasets.load_dataset("nikl.py", "cr.2020.full.v1.0", data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
+for data in dataset['train']:
+    print(data)
+    break
 
-for nikl_task in NIKL_TASK_SET:
-    dataset = datasets.load_dataset("nikl.py", nikl_task, data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
-    for data in dataset['train']:
-        print(data)
-        break
+# for nikl_task in NIKL_TASK_SET:
+#     dataset = datasets.load_dataset("nikl.py", nikl_task, data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
+#     for data in dataset['train']:
+#         print(data)
+#         break

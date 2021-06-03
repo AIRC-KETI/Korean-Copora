@@ -154,6 +154,10 @@ manual_dir/
 | nikl | paraphrase.v1.0 | 유사 문장 데이터 |
 | nikl | paraphrase.v1.0.split | deterministic하게 train, validation, test split을 나눔. |
 | nikl | cola.v1.0 | 문법성 판단 데이터 |
+| nikl | ne.2020.v1.0 | 개체명 인식 2020 버젼 |
+| nikl | ne.2020.v1.0.split | 개체명 인식 2020 버젼, split train, test |
+| nikl | cr.2020.v1.0 | Coreference Resolution 데이터 |
+| nikl | cr.2020.full.v1.0 | CR 데이터 그대로 parsing |
 | kor_corpora | nsmc | naver sentiment movie corpus task |
 | kor_corpora | nsmc.split | deterministic하게 train, validation, test split을 나눔. |
 | kor_corpora | qpair | question pair task. 두 question의 동일 여부 판단. |
@@ -165,6 +169,11 @@ manual_dir/
 | kor_corpora | khsd | Korean Hate Speech dataset |
 | kor_corpora | khsd.split | deterministic하게 train, validation, test split을 나눔. |
 
+
+"ne.2020.v1.0",
+    "ne.2020.v1.0.split",
+    "cr.2020.v1.0",
+    "cr.2020.full.v1.0",
 
 ## TODO
 
