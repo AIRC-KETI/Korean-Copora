@@ -14,7 +14,7 @@
 
 import datasets
 
-KOR_CORPORA_TASK_SET = [
+KORQUAD_TASK_SET = [
     "v1.0",
     "v1.0.split",
     # "v2.1",
@@ -24,8 +24,8 @@ KOR_CORPORA_TASK_SET = [
 ]
 
 
-for kor_corpora_task in KOR_CORPORA_TASK_SET:
-    dataset = datasets.load_dataset("korquad.py", kor_corpora_task, cache_dir="../../cached_dir/huggingface_datasets")
+for korquad_task in KORQUAD_TASK_SET:
+    dataset = datasets.load_dataset("korquad.py", korquad_task, cache_dir="../../cached_dir/huggingface_datasets")
     for data in dataset['train']:
         print(data)
         break
