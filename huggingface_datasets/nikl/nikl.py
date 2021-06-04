@@ -1726,6 +1726,30 @@ class Nikl(datasets.GeneratorBasedBuilder):
             reading_fn=_parsing_doc,
             parsing_fn=_base_proc,
         ),
+        NiklConfig(
+            name='newspaper.2020.v1.0',
+            data_root=_DATASET_ROOT['newspaper.2020.v1.0'],
+            feature=_NEWSPAPER_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['*.json']},
+            reading_fn=_parsing_doc,
+            parsing_fn=_newspaper_proc
+        ),
+        NiklConfig(
+            name='dialogue.2020.v1.0',
+            data_root=_DATASET_ROOT['dialogue.2020.v1.0'],
+            feature=_SPOKEN_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['?[!E]*.json']},
+            reading_fn=_parsing_doc,
+            parsing_fn=functools.partial(_parsing_spoken, dtype='spoken'),
+        ),
+        NiklConfig(
+            name='spoken.v1.1',
+            data_root=_DATASET_ROOT['spoken.v1.1'],
+            feature=_SPOKEN_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['?[!E]*.json']},
+            reading_fn=_parsing_doc,
+            parsing_fn=functools.partial(_parsing_spoken, dtype='spoken'),
+        ),
     ]
 
     MANUAL_DOWNLOAD_INSTRUCTIONS = """

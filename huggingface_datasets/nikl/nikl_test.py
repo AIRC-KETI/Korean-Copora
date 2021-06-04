@@ -46,7 +46,11 @@ NIKL_TASK_SET = [
     'za.2020.full.v1.0',
 ]
 
-dataset = datasets.load_dataset("nikl.py", "za.2020.full.v1.0", data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
+# 'dialogue.2020.v1.0': 'NIKL/v1.0/DIALOGUE_2020',
+    # 'newspaper.2020.v1.0': 'NIKL/v1.0/NEWSPAPER_2020',
+    # 'spoken.v1.1': 'NIKL/v1.1/SPOKEN',
+
+dataset = datasets.load_dataset("nikl.py", "spoken.v1.1", data_dir="../../data", cache_dir="../../cached_dir/huggingface_datasets")
 for data in dataset['train']:
     print(data)
     break
