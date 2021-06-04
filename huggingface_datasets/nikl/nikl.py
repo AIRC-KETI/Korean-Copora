@@ -291,20 +291,20 @@ _MESSENGER_SETTING_FEATURE = datasets.Features({
 })
 
 _SPEAKER_FEATURE = datasets.Sequence({
-    'id': datasets.Value("string"),
     'age': datasets.Value("string"),
-    'occupation': datasets.Value("string"),
-    'sex': datasets.Value("string"),
     'birthplace': datasets.Value("string"),
-    'principal_residence': datasets.Value("string"),
     'current_residence': datasets.Value("string"),
     'education': datasets.Value("string"),
+    'id': datasets.Value("string"),
+    'occupation': datasets.Value("string"),
+    'principal_residence': datasets.Value("string"),
+    'sex': datasets.Value("string"),
 })
 
 _SPOKEN_META_FEATURE = datasets.Features({
-    'topic': datasets.Value("string"),
-    'speaker': _SPEAKER_FEATURE,
     'setting': _SPOKEN_SETTING_FEATURE,
+    'speaker': _SPEAKER_FEATURE,
+    'topic': datasets.Value("string"),
 })
 
 _MESSENGER_META_FEATURE = datasets.Features({
