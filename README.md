@@ -170,6 +170,8 @@ manual_dir/
 | kor_corpora | korsts.split | deterministic하게 train, validation, test split을 나눔. |
 | kor_corpora | khsd | Korean Hate Speech dataset |
 | kor_corpora | khsd.split | deterministic하게 train, validation, test split을 나눔. |
+| aihub | mrc | Machine Reading Comprehension task |
+| aihub | bookmrc | Book 데이터 에서의 MRC |
 
 
 "ne.2020.v1.0",
