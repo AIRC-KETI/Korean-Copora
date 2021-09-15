@@ -1,32 +1,12 @@
-# Copyright 2021 hyeontae seo
-# 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
-import os
-import csv
-import json
-import copy
-import hashlib
-import glob
-import functools
-
 import datasets
+import hashlib
+import functools
+import glob
+import os
+import json
+import openpyxl
 
 _DESCRIPTION = """
-Description is **formatted** as markdown.
-It should also contain any processing which has been applied (if any),
-(e.g. corrupted example skipped, images cropped,...):
 """
 
 _CITATION = """
@@ -34,151 +14,296 @@ _CITATION = """
 
 _VERSION = datasets.Version('1.0.0', "")
 
-_DATASET_ROOT = {
-    'mrc': 'AIHub/MRC/기계독해분야',
-    'book-mrc': 'AIHub/BookMRC',
-    'doc-summary': 'AIHub/DocSummary',
-    'book-summary': 'AIHub/BookSummary',
-    'paper-summary': 'AIHub/PaperSummary',
+_DATASET_ROOT = { # folder
+    'common_squad': 'AIHub/common',
+    'paper_summary': 'AIHub/paper_summary',
+    'paper_patent_section': 'AIHub/paper_summary',
+    'paper_patent_total': 'AIHub/paper_summary',
+    'document_summary_law': 'AIHub/documment_summary',
+    'document_summary_editorial': 'AIHub/documment_summary',
 }
 
-_MRC_QAS_SEQ_FEATURE = datasets.Sequence({
-    'id': datasets.Value("string"),
-    'question': datasets.Value("string"),
-    'answerable': datasets.Value("bool"),
-    'answers': datasets.Sequence({
-        'answer_start': datasets.Value("int32"),
-        'text': datasets.Value("string")
+_PARAGRAPHS_SEQUENCE = datasets.Sequence({ # common_squad
+    'qas': datasets.Sequence({
+        'question': datasets.Value("string"),
+        'answers': datasets.Sequence({
+            'answer_start': datasets.Value("int32"),
+            'text': datasets.Value("string"),
+        }),
+        'id': datasets.Value("string"),
     }),
-    'classtype': datasets.Value("string"),
-})
-
-_MRC_PARAGRAPHS_SEQ_FEATURE = datasets.Sequence({
     'context': datasets.Value("string"),
-    'qas': _MRC_QAS_SEQ_FEATURE,
 })
 
-_MRC_FEATURE = datasets.Features({
-    'idx': datasets.Value("int32"),
+_COMMON_SQUAD_FEATURE = datasets.Features({ # common_squad
+    'id': datasets.Value("int32"), 
+    'paragraphs': _PARAGRAPHS_SEQUENCE,
     'title': datasets.Value("string"),
-    'paragraphs': _MRC_PARAGRAPHS_SEQ_FEATURE,
 })
 
-_BOOK_MRC_QAS_SEQ_FEATURE = datasets.Sequence({
-    'question': datasets.Value("string"),
-    'answers': datasets.Sequence({
-        'answer_start': datasets.Value("int32"),
-        'text': datasets.Value("string"),
-    }),
+
+_SUMMARY_FEATRUE = datasets.Sequence({ # paper_summary 
+    'orginal_text': datasets.Value("string"),
+    'summary_text': datasets.Value("string"),
+})
+
+_PAPER_SUMMARY_FEATURE = datasets.Features({ # paper_summary
+    'id': datasets.Value("int32"),  
+    'doc_type': datasets.Value("string"),
+    'doc_id': datasets.Value("string"),
+    'title': datasets.Value("string"),
+    'date': datasets.Value("string"), 
+    'reg_no': datasets.Value("string"),  
+    'ipc': datasets.Value("string"),  
+    'issued_by': datasets.Value("string"),  
+    'author': datasets.Value("string"), 
+    'summary_entire': _SUMMARY_FEATRUE,
+    'summary_section': _SUMMARY_FEATRUE,    
+})
+
+_PAPER_PATENT_SECTION_FEATURE = datasets.Features({ # paper_patent_section  
+    'id': datasets.Value("int32"), 
+    'doc_type': datasets.Value("string"),
+    'doc_id': datasets.Value("string"),
+    'title': datasets.Value("string"),
+    'date': datasets.Value("string"), 
+    'reg_no': datasets.Value("string"),  
+    'ipc': datasets.Value("string"),  
+    'author': datasets.Value("string"), 
+    'summary_section': _SUMMARY_FEATRUE,    
+})
+
+_PAPER_PATENT_TOTAL_FEATURE = datasets.Features({ # paper_patent_total
+    'id': datasets.Value("int32"), 
+    'doc_type': datasets.Value("string"),
+    'doc_id': datasets.Value("string"),
+    'title': datasets.Value("string"),
+    'date': datasets.Value("string"), 
+    'reg_no': datasets.Value("string"),  
+    'ipc': datasets.Value("string"), 
+    'author': datasets.Value("string"), 
+    'summary_entire': _SUMMARY_FEATRUE,   
+    'summary_section': _SUMMARY_FEATRUE,  
+})
+
+
+# document_summary_law, document_summary_editorial, document_summary_newspaper
+_TEXT_FEATURE = datasets.Sequence({ 
+    'index': datasets.Value("int32"),
+    'sentence': datasets.Value("string"),
+    'highlight_indices': datasets.Value("string"),
+})
+
+# document_summary_law, document_summary_editorial, document_summary_newspaper
+_DOCUMENT_QUALITY_SCORES = datasets.Features({
+    'readable': datasets.Value("int32"),
+    'accurate': datasets.Value("int32"),
+    'informative': datasets.Value("int32"),
+    'trustworthy': datasets.Value("int32"),
+})
+
+_DOCUMENT_SUMMARY_LAW_FEATURE = datasets.Features({ # document_summary_law
     'id': datasets.Value("string"),
-    'is_impossible': datasets.Value("bool"),
-})
-
-_BOOK_MRC_PARAGRAPHS_SEQ_FEATURE = datasets.Sequence({
-    'context': datasets.Value("string"),
-    'qas': _BOOK_MRC_QAS_SEQ_FEATURE,
-})
-
-_BOOK_MRC_FEATURE = datasets.Features({
-    'time': datasets.Value("string"),
+    'category': datasets.Value("string"),
+    'size': datasets.Value("string"),
+    'char_count': datasets.Value("int32"),
+    'publish_date': datasets.Value("string"),
     'title': datasets.Value("string"),
-    'agency': datasets.Value("string"),
-    'year': datasets.Value("string"),
-    'content_id': datasets.Value("string"),
-    'KDC': datasets.Value("string"),
-    'paragraphs': _BOOK_MRC_PARAGRAPHS_SEQ_FEATURE,
+    'text': _TEXT_FEATURE, 
+    'annotator_id': datasets.Value("int32"),
+    'document_quality_scores': _DOCUMENT_QUALITY_SCORES,
+    'extractive': datasets.Sequence(datasets.Value("int32")), 
+    'abstractive': datasets.Sequence(datasets.Value("string")),
 })
 
-def _mrc_qas_proc(qas):
-    result = list()
-    for qa in qas:
-        if "answers" in qa:
-            answerable = True
-            result.append({
-                'id': qa['id'],
-                'question': qa['question'],
-                'answerable': answerable,
-                'answers': qa['answers'],
-                'classtype': qa['classtype']
-            })
-        else:
-            answerable = False
-            result.append({
-                'id': qa['id'],
-                'question': qa['question'],
-                'answerable': answerable,
-                'classtype': qa['classtype']
-            })
-    return result
+# document_summary_editorial, document_summary_newspaper
+_DOCUMENT_SUMMARY_FEATURE = datasets.Features({ 
+    'id': datasets.Value("string"),
+    'category': datasets.Value("string"),
+    'media_type': datasets.Value("string"),
+    'media_sub_type': datasets.Value("string"),
+    'media_name': datasets.Value("string"),
+    'size': datasets.Value("string"),
+    'char_count': datasets.Value("string"),
+    'publish_date': datasets.Value("string"),
+    'title': datasets.Value("string"),
+    'text': _TEXT_FEATURE, 
+    'annotator_id': datasets.Value("int32"),
+    'document_quality_scores': _DOCUMENT_QUALITY_SCORES,  
+    'extractive': datasets.Sequence(datasets.Value("int32")),
+    'abstractive': datasets.Sequence(datasets.Value("string")),
+})
 
-def _mrc_paragraphs_proc(paragraphs):
-    result = list()
-    for paragraph in paragraphs:
-        _context = paragraph['context']
-        _qas = _mrc_qas_proc(paragraph['qas'])
-        result.append({
-            
-            'context': _context,
-            'qas': _qas
-        })
-    return result
 
-def _parsing_mrc(file_path):
+
+def _parsing_common_squad(file_path): # common_squad
     with open(file_path, mode='r') as f:
-        obj = json.load(f)
-        idx = 0
-        for doc in obj['data']:
-            _title = doc['title']
-            _paragraphs = _mrc_paragraphs_proc(doc['paragraphs'])
+        obj = json.loads(f.read())
 
-            yield idx, {
-                'idx': idx,
-                'title': _title,
+        for id, sample in enumerate(obj['data']):
+            _id = id
+            _paragraphs = sample['paragraphs']
+            _title = sample['title']
+            yield _id, {
+                'id': _id,
                 'paragraphs': _paragraphs,
-            }
-
-def _mrc_qas_noanswer_dic(qas):
-    return {
-        'id': qas['id'],
-        'question': qas['question'],
-        'answers': 'unanswerable',
-    }
-
-def _parsing_mrc_noanswer(file_path):
-    with open(file_path, mode='r') as f:
-        obj = json.load(f)
-        for uid, doc in enumerate(obj['data']):
-            _title = doc['title']
-            _context = doc['paragraphs']['context']
-            
-            yield uid, {
-                'idx': uid,
                 'title': _title,
-                'context': _context,
-                'qas': _mrc_qas_noanswer_dic(doc['paragraphs']['qas']),
             }
 
-def _book_mrc_qas_dic(qas):
-    return {
-        'id': qas['id'],
-        'question': qas['question'],
-        'answers': qas['answers']['text'],
-        'is_impossible': qas['is_impossible']
-    }
-
-def _parsing_book_mrc(file_path):
+def _parsing_paper_summary(file_path): # paper_summary
     with open(file_path, mode='r') as f:
-        obj = json.load(f.read())
-        for uid, doc in enumerate(obj['data']):
-            _title = doc['title']
-            _context = doc['paragraphs']['context']
-            
-            yield uid, {
-                'idx': uid,
+        obj = json.loads(f.read())
+
+        for id, sample in enumerate(obj['data']):
+            _id = id
+            _doc_type = sample['doc_type']
+            _doc_id = sample['doc_id']
+            _title = sample['title']
+            _date = sample['date']
+            _reg_no = sample['reg_no']
+            _ipc = sample['reg_no']
+            _issued_by = sample['issued_by']
+            _author = sample['author']
+            _summary_entire = sample['summary_entire']
+            _summary_section = sample['summary_section']
+            yield _id, {
+                'id': _id,
+                'doc_type': _doc_type,
+                'doc_id': _doc_id,
                 'title': _title,
-                'context': _context,
-                'qas': _book_mrc_qas_dic(doc['paragraphs']['qas']),
+                'date': _date,
+                'reg_no': _reg_no,
+                'ipc': _ipc,
+                'issued_by': _issued_by,
+                'author': _author,
+                'summary_entire': _summary_entire,
+                'summary_section': _summary_section,
+            } 
+
+
+def _parsing_paper_patent_section(file_path): # paper_patent_section
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+
+        for id, sample in enumerate(obj['data']):
+            _id = id
+            _doc_type = sample['doc_type']
+            _doc_id = sample['doc_id']
+            _title = sample['title']
+            _date = sample['date']
+            _reg_no = sample['reg_no']
+            _ipc = sample['reg_no']
+            _author = sample['author']
+            _summary_section = sample['summary_section']
+            yield _id, {
+                'id': _id,
+                'doc_type': _doc_type,
+                'doc_id': _doc_id,
+                'title': _title,
+                'date': _date,
+                'reg_no': _reg_no,
+                'ipc': _ipc,
+                'author': _author,
+                'summary_section': _summary_section,
             }
+
+        
+def _parsing_paper_patent_total(file_path): # paper_patent_total
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+
+        for id, sample in enumerate(obj['data']):
+            _id = id
+            _doc_type = sample['doc_type']
+            _doc_id = sample['doc_id']
+            _title = sample['title']
+            _date = sample['date']
+            _reg_no = sample['reg_no']
+            _ipc = sample['reg_no']
+            _author = sample['author']
+            _summary_section = sample['summary_section']
+            yield _id, {
+                'id': _id,
+                'doc_type': _doc_type,
+                'doc_id': _doc_id,
+                'title': _title,
+                'date': _date,
+                'reg_no': _reg_no,
+                'ipc': _ipc,
+                'author': _author,
+                'summary_entire': _summary_section,
+                'summary_section': _summary_section,
+            } 
+
+
+def _parsing_document_summary_law(file_path): # document_summary_law
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+
+        for sample in obj:
+            _id = sample['id']
+            _category = sample['category']
+            _size = sample['size']
+            _char_count = sample['char_count']
+            _publish_date = sample['publish_date']
+            _title = sample['title']
+            _text = sample['text']
+            _annotator_id = sample['annotator_id']
+            _document_quality_scores = sample['document_quality_scores']
+            _extractive = sample['extractive']
+            _abstractive = sample['abstractive']
+            yield _id, {
+                'id': _id,
+                'category': _category,
+                'size': _size,
+                'char_count': _char_count,
+                'publish_date': _publish_date,
+                'title': _title,
+                'text': _text,
+                'annotator_id': _annotator_id,
+                'document_quality_scores': _document_quality_scores, 
+                'extractive': _extractive,
+                'abstractive': _abstractive,
+            }
+
+# document_summary_editorial, document_summary_newspaper
+def _parsing_document_summary(file_path):
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+
+        for sample in obj:
+            _id = sample['id']
+            _category = sample['category']
+            _media_type = sample['media_type']
+            _media_sub_type = sample['media_sub_type']
+            _media_name = sample['media_name']
+            _size = sample['size']
+            _char_count = str(sample['char_count']) 
+            _publish_date = sample['publish_date']
+            _title = sample['title']
+            _text = sample['text']
+            _annotator_id = sample['annotator_id']
+            _document_quality_scores = sample['document_quality_scores']
+            _extractive = sample['extractive']
+            _abstractive = sample['abstractive']
+            yield _id, {
+                'id': _id,
+                'category': _category,
+                'media_type': _media_type,
+                'media_sub_type': _media_sub_type,
+                'media_name': _media_name,
+                'size': _size,
+                'char_count': _char_count,
+                'publish_date': _publish_date,
+                'title': _title,
+                'text': _text,
+                'annotator_id': _annotator_id,
+                'document_quality_scores': _document_quality_scores, 
+                'extractive': _extractive,
+                'abstractive': _abstractive,
+            }
+
+
 
 def _hash_text(text):
     return hashlib.md5(text.encode("utf-8")).hexdigest()
@@ -217,7 +342,7 @@ class AIHubConfig(datasets.BuilderConfig):
                  metadata=None,
                  **kwargs):
         super(AIHubConfig, self).__init__(
-            name=name,
+            name=name, # error...?
             version=_VERSION,
             **kwargs
         )
@@ -240,65 +365,68 @@ class AIHub(datasets.GeneratorBasedBuilder):
 
     BUILDER_CONFIGS = [
         AIHubConfig(
-            name='mrc.normal.squad.v1.0',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_normal_squad_all.json']},
-            reading_fn=_parsing_mrc,
+            name='common.squad.v1.0',
+            data_root=_DATASET_ROOT['common_squad'],
+            feature=_COMMON_SQUAD_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['ko_wiki_v1_squad.json']},
+            reading_fn=_parsing_common_squad,
             parsing_fn=lambda x:x,
         ),
         AIHubConfig(
-            name='mrc.normal.squad.v1.0.split',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_normal_squad_all.json']},
-            reading_fn=_parsing_mrc,
-            parsing_fn=lambda x:x,
-            split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
-        ),
-        AIHubConfig(
-            name='mrc.noanswer.squad.v1.0',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_noanswer_squad_all.json']},
-            reading_fn=_parsing_mrc_noanswer,
-            parsing_fn=lambda x:x,
-        ),
-        AIHubConfig(
-            name='mrc.noanswer.squad.v1.0.split',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_noanswer_squad_all.json']},
-            reading_fn=_parsing_mrc_noanswer,
+            name='common.squad.v1.0.split',
+            data_root=_DATASET_ROOT['common_squad'],
+            feature=_COMMON_SQUAD_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['ko_wiki_v1_squad.json']},
+            reading_fn=_parsing_common_squad,
             parsing_fn=lambda x:x,
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='mrc.clue0529.squad.v1.0',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_clue0529_squad_all.json']},
-            reading_fn=_parsing_mrc,
-            parsing_fn=lambda x:x,
-        ),
-        AIHubConfig(
-            name='mrc.clue0529.squad.v1.0.split',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_MRC_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_nia_clue0529_squad_all.json']},
-            reading_fn=_parsing_mrc,
-            parsing_fn=lambda x:x,
-            split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
-        ),
-        AIHubConfig(
-            name='boock.mrc.v1.0',
-            data_root=_DATASET_ROOT['mrc'],
-            feature=_BOOK_MRC_FEATURE,
+            name='paper.summary.v1.0.split',
+            data_root=_DATASET_ROOT['paper_summary'],
+            feature=_PAPER_SUMMARY_FEATURE,
             data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
                           datasets.Split.VALIDATION: ['Validation/*.json']},
-            reading_fn=_parsing_mrc,
+            reading_fn=_parsing_paper_summary,
             parsing_fn=lambda x:x,
         ),
+        AIHubConfig(
+            name='paper.patent.section.v1.0.split',
+            data_root=_DATASET_ROOT['paper_patent_section'],
+            feature=_PAPER_PATENT_SECTION_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
+                          datasets.Split.VALIDATION: ['Validation/*.json']},
+            reading_fn=_parsing_paper_patent_section,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='paper.patent.total.v1.0.split',
+            data_root=_DATASET_ROOT['paper_patent_total'],
+            feature=_PAPER_PATENT_TOTAL_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
+                          datasets.Split.VALIDATION: ['Validation/*.json']},
+            reading_fn=_parsing_paper_patent_total,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='document.summary.law.v1.0.split',
+            data_root=_DATASET_ROOT['document_summary_law'],
+            feature=_DOCUMENT_SUMMARY_LAW_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['Training/train_original.json'],
+                          datasets.Split.VALIDATION: ['Validation/dev_original.json']},
+            reading_fn=_parsing_document_summary_law,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='document.summary.editorial.v1.0.split',
+            data_root=_DATASET_ROOT['document_summary_editorial'],
+            feature=_DOCUMENT_SUMMARY_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['Training/train_original.json'],
+                          datasets.Split.VALIDATION: ['Validation/dev_original.json']},
+            reading_fn=_parsing_document_summary,
+            parsing_fn=lambda x:x,
+        ),
+        
     ]
 
     MANUAL_DOWNLOAD_INSTRUCTIONS = """
@@ -308,11 +436,17 @@ class AIHub(datasets.GeneratorBasedBuilder):
 
     This is dataset and path pairs. (all the paths are case-sensitive!)
     ============================================
-    MRC_NORMAL(v1.0): manual_dir/AIHub/MRC/기계독해분야/ko_nia_normal_squad_all.json
-    MRC_NOANSWER(v1.0): manual_dir/AIHub/MRC/기계독해분야/ko_nia_noanswer_squad_all.json
-    MRC_CLUE0529(v1.0): manual_dir/AIHub/MRC/기계독해분야/ko_nia_clue0529_squad_all.json
-    BOOK_MRC(v1.0): manual_dir/AIHub/BookMRC/Training/도서.json
-                    manual_dir/AIHub/BookMRC/Validation/도서.json
+    COMMON_SQUAD(v1.0): manual_dir/AIHub/COMMON/ko_wiki_v1_squad.json
+    PAPER_SUMMARY(v1.0): manual_dir/AIHub/PAPER_SUMMARY/Training/논문요약.json
+                         manual_dir/AIHub/PAPER_SUMMARY/Validation/논문요약.json
+    PAPER_PATENT_SECTION(v1.0): manual_dir/AIHub/PAPER_PATENT_SECTION/Training/특허섹션만.json
+                                manual_dir/AIHub/PAPER_PATENT_SECTION/Validation/특허섹션만.json
+    PAPER_PATENT_TOTAL(v1.0): manual_dir/AIHub/PAPER_PATENT_TOTAL/Training/특허전체.json
+                              manual_dir/AIHub/PAPER_PATENT_TOTAL/Validation/특허전체.json
+    DOCUMENT_SUMMARY_LAW(v1.0): manual_dir/AIHub/DOCUMENT_SUMMARY_LAW/Training/train_original.json
+                                manual_dir/AIHub/DOCUMENT_SUMMARY_LAW/Validation/dev_original.json
+    DOCUMENT_SUMMARY_EDITORIAL(v1.0): manual_dir/AIHub/DOCUMENT_SUMMARY_EDITORIAL/Training/train_original.json
+                                      manual_dir/AIHub/DOCUMENT_SUMMARY_EDITORIAL/Validation/dev_original.json
     ============================================
     """
 
