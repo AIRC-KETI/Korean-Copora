@@ -16,11 +16,12 @@ _VERSION = datasets.Version('1.0.0', "")
 
 _DATASET_ROOT = { # folder
     'common_squad': 'AIHub/common',
-    'paper_summary': 'AIHub/paper_summary',
-    'paper_patent_section': 'AIHub/paper_summary',
-    'paper_patent_total': 'AIHub/paper_summary',
-    'document_summary_law': 'AIHub/documment_summary',
-    'document_summary_editorial': 'AIHub/documment_summary',
+    'paper_summary': 'AIHub/논문자료 요약',
+    'paper_patent_section': 'AIHub/논문자료 요약',
+    'paper_patent_total': 'AIHub/논문자료 요약',
+    'document_summary_law': 'AIHub/문서요약 텍스트',
+    'document_summary_editorial': 'AIHub/문서요약 텍스트',
+    'emotional_talk': 'AIHub/감성대화',
 }
 
 _PARAGRAPHS_SEQUENCE = datasets.Sequence({ # common_squad
@@ -132,6 +133,53 @@ _DOCUMENT_SUMMARY_FEATURE = datasets.Features({
     'document_quality_scores': _DOCUMENT_QUALITY_SCORES,  
     'extractive': datasets.Sequence(datasets.Value("int32")),
     'abstractive': datasets.Sequence(datasets.Value("string")),
+})
+
+_PERSONA_FEATURE = datasets.Features({ # emotional_talk
+    'persona-id': datasets.Value("string"),
+    'human': datasets.Sequence(
+        datasets.Value("string"),
+    ),
+    'computer': datasets.Sequence(
+        datasets.Value("string"),
+    ),
+})
+
+_EMOTION_FEATURE = datasets.Features({ # emotional_talk
+    'emotion-id': datasets.Value("string"),
+    'type': datasets.Value("string"),
+    'situation': datasets.Sequence(
+        datasets.Value("string"),
+    ),
+})
+
+_PROFILE_FEATURE = datasets.Features({ # emotional_talk
+    'persona-id': datasets.Value("string"),
+    'persona': _PERSONA_FEATURE,
+    'emotion': _EMOTION_FEATURE,
+})
+
+_CONTENT_FEATURE = datasets.Features({ # emotional_talk
+    'HS01': datasets.Value("string"),
+    'SS01': datasets.Value("string"),
+    'HS02': datasets.Value("string"),
+    'SS02': datasets.Value("string"),
+    'HS03': datasets.Value("string"),
+    'SS03': datasets.Value("string"),
+})
+
+_TALK_FEATURE = datasets.Features({ # emotional_talk
+    'id': datasets.Features({
+        'profile-id': datasets.Value("string"),
+        'talk-id': datasets.Value("string"),
+    }),
+    'content': _CONTENT_FEATURE,
+})
+
+_EMOTIONAL_TALK_FEATURE = datasets.Features({ # emotional_talk
+    'id': datasets.Value("int32"), 
+    'profile': _PROFILE_FEATURE,
+    'talk': _TALK_FEATURE,
 })
 
 
@@ -303,7 +351,19 @@ def _parsing_document_summary(file_path):
                 'abstractive': _abstractive,
             }
 
+def _parsing_emotional_talk(file_path): # emotional talk
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
 
+        for id, sample in enumerate(obj):
+            _id = id
+            _profile = sample['profile']
+            _talk = sample['talk']
+            yield _id, {
+                'id':_id,
+                'profile': _profile,
+                'talk': _talk,
+            }
 
 def _hash_text(text):
     return hashlib.md5(text.encode("utf-8")).hexdigest()
@@ -368,7 +428,7 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='common.squad.v1.0',
             data_root=_DATASET_ROOT['common_squad'],
             feature=_COMMON_SQUAD_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_wiki_v1_squad.json']},
+            data_sp_path={datasets.Split.TRAIN: ['nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json']},
             reading_fn=_parsing_common_squad,
             parsing_fn=lambda x:x,
         ),
@@ -376,7 +436,7 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='common.squad.v1.0.split',
             data_root=_DATASET_ROOT['common_squad'],
             feature=_COMMON_SQUAD_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['ko_wiki_v1_squad.json']},
+            data_sp_path={datasets.Split.TRAIN: ['nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json']},
             reading_fn=_parsing_common_squad,
             parsing_fn=lambda x:x,
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
@@ -385,8 +445,8 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='paper.summary.v1.0.split',
             data_root=_DATASET_ROOT['paper_summary'],
             feature=_PAPER_SUMMARY_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
-                          datasets.Split.VALIDATION: ['Validation/*.json']},
+            data_sp_path={datasets.Split.TRAIN: ['Training/training_논문/*.json'],
+                          datasets.Split.VALIDATION: ['Validation/validation_논문/*.json']},
             reading_fn=_parsing_paper_summary,
             parsing_fn=lambda x:x,
         ),
@@ -394,8 +454,8 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='paper.patent.section.v1.0.split',
             data_root=_DATASET_ROOT['paper_patent_section'],
             feature=_PAPER_PATENT_SECTION_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
-                          datasets.Split.VALIDATION: ['Validation/*.json']},
+            data_sp_path={datasets.Split.TRAIN: ['Training/training_특허섹션만/*.json'],
+                          datasets.Split.VALIDATION: ['Validation/validation_특허섹션만/*.json']},
             reading_fn=_parsing_paper_patent_section,
             parsing_fn=lambda x:x,
         ),
@@ -403,8 +463,8 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='paper.patent.total.v1.0.split',
             data_root=_DATASET_ROOT['paper_patent_total'],
             feature=_PAPER_PATENT_TOTAL_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['Training/*.json'],
-                          datasets.Split.VALIDATION: ['Validation/*.json']},
+            data_sp_path={datasets.Split.TRAIN: ['Training/training_특허전체/*.json'],
+                          datasets.Split.VALIDATION: ['Validation/validation_특허전체/*.json']},
             reading_fn=_parsing_paper_patent_total,
             parsing_fn=lambda x:x,
         ),
@@ -412,8 +472,8 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='document.summary.law.v1.0.split',
             data_root=_DATASET_ROOT['document_summary_law'],
             feature=_DOCUMENT_SUMMARY_LAW_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['Training/train_original.json'],
-                          datasets.Split.VALIDATION: ['Validation/dev_original.json']},
+            data_sp_path={datasets.Split.TRAIN: ['1.Training/train_법률_data/법률문서/train_original.json'],
+                          datasets.Split.VALIDATION: ['2.Validation/valid_법률_data/법률문서/dev_original.json']},
             reading_fn=_parsing_document_summary_law,
             parsing_fn=lambda x:x,
         ),
@@ -421,9 +481,18 @@ class AIHub(datasets.GeneratorBasedBuilder):
             name='document.summary.editorial.v1.0.split',
             data_root=_DATASET_ROOT['document_summary_editorial'],
             feature=_DOCUMENT_SUMMARY_FEATURE,
-            data_sp_path={datasets.Split.TRAIN: ['Training/train_original.json'],
-                          datasets.Split.VALIDATION: ['Validation/dev_original.json']},
+            data_sp_path={datasets.Split.TRAIN: ['1.Training/train_사설잡지_data/train_original.json'],
+                          datasets.Split.VALIDATION: ['2.Validation/valid_사설잡지_data/dev_original.json']},
             reading_fn=_parsing_document_summary,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='emotional.talk.v1.0.split',
+            data_root=_DATASET_ROOT['emotional_talk'],
+            feature=_EMOTIONAL_TALK_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['Training/감성대화말뭉치(최종데이터)_Training/감성대화말뭉치(최종데이터)_Training.json'],
+                          datasets.Split.VALIDATION: ['Validation/감성대화말뭉치(최종데이터)_Validation/감성대화말뭉치(최종데이터)_Validation.json']},
+            reading_fn=_parsing_emotional_talk,
             parsing_fn=lambda x:x,
         ),
         
@@ -436,17 +505,19 @@ class AIHub(datasets.GeneratorBasedBuilder):
 
     This is dataset and path pairs. (all the paths are case-sensitive!)
     ============================================
-    COMMON_SQUAD(v1.0): manual_dir/AIHub/COMMON/ko_wiki_v1_squad.json
-    PAPER_SUMMARY(v1.0): manual_dir/AIHub/PAPER_SUMMARY/Training/논문요약.json
-                         manual_dir/AIHub/PAPER_SUMMARY/Validation/논문요약.json
-    PAPER_PATENT_SECTION(v1.0): manual_dir/AIHub/PAPER_PATENT_SECTION/Training/특허섹션만.json
-                                manual_dir/AIHub/PAPER_PATENT_SECTION/Validation/특허섹션만.json
-    PAPER_PATENT_TOTAL(v1.0): manual_dir/AIHub/PAPER_PATENT_TOTAL/Training/특허전체.json
-                              manual_dir/AIHub/PAPER_PATENT_TOTAL/Validation/특허전체.json
-    DOCUMENT_SUMMARY_LAW(v1.0): manual_dir/AIHub/DOCUMENT_SUMMARY_LAW/Training/train_original.json
-                                manual_dir/AIHub/DOCUMENT_SUMMARY_LAW/Validation/dev_original.json
-    DOCUMENT_SUMMARY_EDITORIAL(v1.0): manual_dir/AIHub/DOCUMENT_SUMMARY_EDITORIAL/Training/train_original.json
-                                      manual_dir/AIHub/DOCUMENT_SUMMARY_EDITORIAL/Validation/dev_original.json
+    COMMON_SQUAD(v1.0): manual_dir/AIHub/common/nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json
+    PAPER_SUMMARY(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_논문/*.json
+                         manual_dir/AIHub/논문자료 요약/Validation/validation_논문/*.json
+    PAPER_PATENT_SECTION(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_특허섹션만/*.json
+                                manual_dir/AIHub/논문자료 요약/Validation/validation_특허섹션만/*.json
+    PAPER_PATENT_TOTAL(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_특허전체/*.json
+                              manual_dir/AIHub/논문자료 요약/Validation/validation_특허전체/*.json
+    DOCUMENT_SUMMARY_LAW(v1.0): manual_dir/AIHub/문서요약 텍스트/1.Training/train_법률_data/법률문서/train_original.json
+                                manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_법률_data/법률문서/dev_original.json
+    DOCUMENT_SUMMARY_EDITORIAL(v1.0): manual_dir/AIHub/문서요약 텍스트/1.Training/train_사설잡지_data/train_original.json
+                                      manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_사설잡지_data/dev_original.json
+    EMOTIONAL_TALK(v1.0): manual_dir/AIHub/감성대화/Training/감성대화말뭉치(최종데이터)_Training/감성대화말뭉치(최종데이터)_Training.json
+                          manual_dir/AIHub/감성대화/Validation/감성대화말뭉치(최종데이터)_Validation/감성대화말뭉치(최종데이터)_Validation.json
     ============================================
     """
 
