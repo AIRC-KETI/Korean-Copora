@@ -172,6 +172,14 @@ manual_dir/
 | kor_corpora | khsd.split | deterministic하게 train, validation, test split을 나눔. |
 | aihub | mrc | Machine Reading Comprehension task |
 | aihub | bookmrc | Book 데이터 에서의 MRC |
+| aihub | common.suqad.v1.0 | common 데이터 에서의 질문, 답변, 제시문 말뭉치 |
+| aihub | common.suqad.v1.0.split | deterministic하게 train, validation, test split을 나눔. |
+| aihub | paper.summary.v1.0.split | 논문자료 요약 데이터에서의 논문, split train, validation |
+| aihub | paper.patent.section.v1.0.split | 논문자료 요약 데이터에서의 특허섹션만, split train, validation |
+| aihub | paper.patent.total.v1.0.split | 논문자료 요약 데이터에서의 특허전체, split train, validation |
+| aihub | document.summary.law.v1.0.split| 문서요약 텍스트 데이터에서 법률문서, split train, validation |
+| aihub | document.summary.editorial.v1.0.split | 문서요약 텍스트 데이터에서 사설잡지, split train, validation |
+| aihub | emotional.talk.v1.0.split | 감성대화 데이터, split train, validation | 
 
 
 "ne.2020.v1.0",

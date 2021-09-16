@@ -439,7 +439,7 @@ class AIHub(datasets.GeneratorBasedBuilder):
             data_sp_path={datasets.Split.TRAIN: ['nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json']},
             reading_fn=_parsing_common_squad,
             parsing_fn=lambda x:x,
-            split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
         ),
         AIHubConfig(
             name='paper.summary.v1.0.split',
