@@ -22,6 +22,10 @@ _DATASET_ROOT = { # folder
     'document_summary_law': 'AIHub/문서요약 텍스트',
     'document_summary_editorial': 'AIHub/문서요약 텍스트',
     'emotional_talk': 'AIHub/감성대화',
+    'dialog': 'AIHub/dialog',
+    'dialog_intent': 'AIHub/dialog',
+    'dialog_headword': 'AIHub/dialog',
+    'dialog_knowledge': 'AIHub/dialog'
 }
 
 _PARAGRAPHS_SEQUENCE = datasets.Sequence({ # common_squad
@@ -182,7 +186,89 @@ _EMOTIONAL_TALK_FEATURE = datasets.Features({ # emotional_talk
     'talk': _TALK_FEATURE,
 })
 
+_DIALOG_INTENT_SEQUENCE = datasets.Sequence({ # dialog
+    'a_entity': datasets.Value("string"),
+    'a_morpheme': datasets.Value("string"),
+    'answer': datasets.Value("string"),
+    'q_entity': datasets.Value("string"),
+    'q_morpheme': datasets.Value("string"),
+    'question': datasets.Value("string"),
+    'synonyms': datasets.Value("string"),
+})
 
+_SUB_INTENT_FEATURE = datasets.Features({ # dialog
+    'a_entity': datasets.Value("string"),
+    'a_morpheme': datasets.Value("string"),
+    'answer': datasets.Value("string"),
+    'q_entity': datasets.Value("string"),
+    'q_morpheme': datasets.Value("string"),
+    'question': datasets.Value("string"),
+    'synonyms': datasets.Value("string"),
+})
+
+_INTENT_FEATURE = datasets.Features({ # dialog
+    'intent': _DIALOG_INTENT_SEQUENCE,
+    'main_intent': datasets.Value("string"),
+    'sub_intent': datasets.Sequence({
+        'intent': _SUB_INTENT_FEATURE,
+        'sub_intent': datasets.Value("string"),
+    })
+})
+
+_DIALOG_FEATURE = datasets.Features({  # dialog
+    'id': datasets.Value("int32"), 
+    'intent': _INTENT_FEATURE,
+    'domain':datasets.Value("string"),
+    'category': datasets.Value("string"),
+})
+
+_INTENT_SEQUENCE = datasets.Sequence({ # dialog_intent
+    'SUB_INTENT': datasets.Sequence({
+        'sub_intent': datasets.Value("string"),
+    }),
+    'intent': datasets.Value("string"),
+})
+
+_INTENT_FEATURE = datasets.Features({ # dialog_intent
+    'id': datasets.Value("int32"),
+    'intent': _INTENT_SEQUENCE,
+    'domain': datasets.Value("string"),
+    'category': datasets.Value("string"),
+})
+
+_HEADW0RD_SEQUENCE = datasets.Sequence({ # dialog_headword
+    'WORD': datasets.Sequence({
+        'word': datasets.Value("string"),
+    }),
+    'headword': datasets.Value("string"),
+})
+
+_HEADWORD_FEATURE = datasets.Features({ # dialog_headword
+    'id': datasets.Value("int32"),
+    'head': _HEADW0RD_SEQUENCE,
+    'domain': datasets.Value("string"),
+    'category': datasets.Value("string"),
+})
+
+_KNOWLEDGE_SUB_SEQUENCE = datasets.Sequence({ # dialog_knowledge
+    'KNOWLEDGE': datasets.Sequence({
+        'knowledge': datasets.Value("string"),
+        'knowledge_detail': datasets.Value("string"),
+    }),
+    'sub_intent': datasets.Value("string"),
+})
+
+_KNOWLEDGE_SEQUENCE = datasets.Sequence({ # dialog_knowledge
+    'SUB_INTENT': _KNOWLEDGE_SUB_SEQUENCE,
+    'intent': datasets.Value("string"),
+})
+
+_KNOWLEDGE_FEATURE = datasets.Features({ # dialog_knowledge
+    'id': datasets.Value("int32"),
+    'knowledge': _KNOWLEDGE_SEQUENCE,
+    'domain': datasets.Value("string"),
+    'category': datasets.Value("string"),
+})
 
 def _parsing_common_squad(file_path): # common_squad
     with open(file_path, mode='r') as f:
@@ -365,6 +451,208 @@ def _parsing_emotional_talk(file_path): # emotional talk
                 'talk': _talk,
             }
 
+def _parsing_dialog_intent(intent): # dialog
+    keys = ['a_entity', 'a_morpheme', 'answer', 
+                'q_entity', 'q_morpheme', 'question', 'synonyms']
+    dic = {}
+    for k in keys:
+        try:
+            dic[f'{k}'] = intent[f'{k}']
+        except:
+            dic[f'{k}'] = ''
+    
+    return dic
+
+def _parsing_dialog_sub_intent(): # dialog
+    dic = {}
+    dic['INTENT'] = {} #_parsing_intent({})
+    dic['SUB_INTENT'] = ''
+    return [dic]
+
+def _parsing_dialog(file_path): # dialog 
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        _id = 0
+
+        for sample in obj['DATA']:
+            _category = sample['CATEGORY']
+            _domain = sample['DOMAIN']
+
+            for c_lst in _category:
+                intent_lst = c_lst['INTENT']
+                category = c_lst['category']
+
+                for intent in intent_lst: # intent_lst, main, sub_lst
+                    
+                    dic = {}
+                    # intent
+                    result_intent = []
+                    for i in intent['INTENT']:
+                        dic_intent = _parsing_dialog_intent(i)
+                        result_intent.append(dic_intent)
+                    dic['intent'] = result_intent
+
+                    # main_intent
+                    dic['main_intent'] = intent['MAIN_INTENT']
+
+                    try:
+                        sub_lst = intent['SUB_INTENT']
+                    except KeyError: 
+                        sub_lst = _parsing_dialog_sub_intent()
+                    
+                    result_sub_intent = []
+                    
+                    for sub_intent in sub_lst:
+                        dic_sub_intent = {}
+                        dic_sub_sub_intent = _parsing_dialog_intent(sub_intent)
+                        dic_sub_intent['intent'] = dic_sub_sub_intent
+                        dic_sub_intent['sub_intent'] = sub_intent['SUB_INTENT']
+                        result_sub_intent.append(dic_sub_intent)
+
+                    dic['sub_intent'] = result_sub_intent
+                    
+                    yield _id, {
+                        'id': _id,
+                        'intent': dic,
+                        'domain': _domain,
+                        'category': category,
+                    }
+                    _id += 1
+
+def _parsing_empty_sub_intent(): # dialog/intent
+    dic = {}
+    dic['sub_intent'] = ""
+    return [dic]
+
+def _parsing_empty_intent(): # dialog/intent
+    dic = {}
+    dic['SUB_INTENT'] = _parsing_empty_sub_intent() 
+    dic['intent'] = ""
+    return [dic]
+
+def _parsing_intent(file_path): # dialog/intent
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        _id = 0
+
+        for sample in obj['DATA']:
+            _category = sample['CATEGORY']
+            _domain = sample['DOMAIN']
+
+            for c_list in _category:
+                category = c_list['category']
+                intent_lst = c_list['INTENT']
+
+                result = []
+                if len(intent_lst) == 0:
+                    result = _parsing_empty_intent()
+                else:
+                    for intent in intent_lst:
+                        if len(intent['SUB_INTENT']) == 0:
+                            intent['SUB_INTENT'] = _parsing_empty_sub_intent()
+                        result.append(intent)
+
+                yield _id, {
+                    'id': _id,
+                    'intent': result,
+                    'domain': _domain,
+                    'category': category,
+                }
+                _id += 1
+
+def _parsing_empty_word():
+    dic = {}
+    dic['word'] = ""
+    return [dic]
+
+def _parsing_empty_head():
+    dic = {}
+    dic['WORD'] = _parsing_empty_word()
+    dic['headword'] = ""
+    return [dic]
+
+def _parsing_headword(file_path):
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        _id = 0
+
+        for sample in obj['DATA']:
+            _category = sample['CATEGORY']
+            _domain = sample['DOMAIN']
+
+            for c_list in _category:
+                category = c_list['category']
+                head_lst = c_list['HEADWORD']
+
+                result = []
+                if len(head_lst) == 0:
+                    result = _parsing_empty_head()
+                else:
+                    for head in head_lst:
+                        if len(head['WORD']) == 0:
+                            head['WORD'] = _parsing_empty_word()
+                        result.append(head)
+
+                yield _id, {
+                    'id': _id,
+                    'head': result,
+                    'domain': _domain,
+                    'category': category,
+                }
+                _id += 1
+
+def _parsing_empty_sub_knowledge_lst(): # dialog/knowledge
+    dic = {}
+    dic['knowledge'] = ""
+    dic['knowledge_detail'] = ""
+    return [dic]
+
+def _parsing_empty_sub_knowledge(): # dialog/knowledge
+    dic = {}
+    dic['KNOWLEDGE'] = _parsing_empty_sub_knowledge_lst()
+    dic['sub_intent'] = ""
+    return [dic]
+
+def _parsing_empty_knowledge(): # dialog/knowledge
+    dic = {}
+    dic['SUB_INTENT'] = _parsing_empty_sub_knowledge() 
+    dic['intent'] = ""
+    return [dic]
+
+def _parsing_knowledge(file_path): # dialog/knowledge
+    with open(file_path, mode='r') as f:
+        obj = json.loads(f.read())
+        _id = 0
+
+        for sample in obj['DATA']:
+            _category = sample['CATEGORY']
+            _domain = sample['DOMAIN']
+
+            for c_list in _category:
+                category = c_list['category']
+                intent_lst = c_list['INTENT']
+
+                result = []
+                if len(intent_lst) == 0:
+                    result = _parsing_empty_knowledge()
+                else:
+                    for intent in intent_lst:
+                        if len(intent['SUB_INTENT']) == 0:
+                            intent['SUB_INTENT'] = _parsing_empty_sub_knowledge()
+                        else:
+                            for sub_intent in intent['SUB_INTENT']:
+                                if len(sub_intent['KNOWLEDGE']) == 0:
+                                    sub_intent['KNOWLEDGE'] = _parsing_empty_sub_knowledge_lst()
+                        result.append(intent)
+
+                yield _id, {
+                    'id': _id,
+                    'knowledge': result,
+                    'domain': _domain,
+                    'category': category,
+                }
+                _id += 1
+
 def _hash_text(text):
     return hashlib.md5(text.encode("utf-8")).hexdigest()
 
@@ -495,6 +783,74 @@ class AIHub(datasets.GeneratorBasedBuilder):
             reading_fn=_parsing_emotional_talk,
             parsing_fn=lambda x:x,
         ),
+        AIHubConfig(
+            name='dialog.v1.0',
+            data_root=_DATASET_ROOT['dialog'],
+            feature=_DIALOG_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['01_dialog/dialog/dialog.json']},
+            reading_fn=_parsing_dialog,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='dialog.v1.0.split',
+            data_root=_DATASET_ROOT['dialog'],
+            feature=_DIALOG_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['01_dialog/dialog/dialog.json']},
+            reading_fn=_parsing_dialog,
+            parsing_fn=lambda x:x,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
+        ),
+        AIHubConfig(
+            name='dialog.intent.v1.0',
+            data_root=_DATASET_ROOT['dialog_intent'],
+            feature=_INTENT_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['02_intent/intent/intent.json']},
+            reading_fn=_parsing_intent,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='dialog.intent.v1.0.split',
+            data_root=_DATASET_ROOT['dialog_intent'],
+            feature=_INTENT_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['02_intent/intent/intent.json']},
+            reading_fn=_parsing_intent,
+            parsing_fn=lambda x:x,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
+        ),
+        AIHubConfig(
+            name='dialog.headword.v1.0',
+            data_root=_DATASET_ROOT['dialog_headword'],
+            feature=_HEADWORD_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['03_headword/headword/headword.json']},
+            reading_fn=_parsing_headword,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='dialog.headword.v1.0.split',
+            data_root=_DATASET_ROOT['dialog_headword'],
+            feature=_HEADWORD_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['03_headword/headword/headword.json']},
+            reading_fn=_parsing_headword,
+            parsing_fn=lambda x:x,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
+        ),
+        AIHubConfig(
+            name='dialog.knowledge.v1.0',
+            data_root=_DATASET_ROOT['dialog_knowledge'],
+            feature=_KNOWLEDGE_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['04_knowledge/knowledge/knowledge.json']},
+            reading_fn=_parsing_knowledge,
+            parsing_fn=lambda x:x,
+        ),
+        AIHubConfig(
+            name='dialog.knowledge.v1.0.split',
+            data_root=_DATASET_ROOT['dialog_knowledge'],
+            feature=_KNOWLEDGE_FEATURE,
+            data_sp_path={datasets.Split.TRAIN: ['04_knowledge/knowledge/knowledge.json']},
+            reading_fn=_parsing_knowledge,
+            parsing_fn=lambda x:x,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
+        ),
         
     ]
 
@@ -518,6 +874,10 @@ class AIHub(datasets.GeneratorBasedBuilder):
                                       manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_사설잡지_data/dev_original.json
     EMOTIONAL_TALK(v1.0): manual_dir/AIHub/감성대화/Training/감성대화말뭉치(최종데이터)_Training/감성대화말뭉치(최종데이터)_Training.json
                           manual_dir/AIHub/감성대화/Validation/감성대화말뭉치(최종데이터)_Validation/감성대화말뭉치(최종데이터)_Validation.json
+    DIALOG(v1.0): manual_dir/AIHub/dialog/01_dialog/dialog/dialog.json
+    DIALOG_INTENT(v1.0): manual_dir/AIHub/dialog/02_intent/intent/intent.json
+    DIALOG_HEADWORD(v1.0): manual_dir/AIHub/dialog/03_headword/headword/headword.json
+    DIALOG_KNOWLEDGE(v1.0): manual_dir/AIHub/dialog/04_knowledge/knowledge/knowledge.json
     ============================================
     """
 
