@@ -72,8 +72,8 @@ _KLUE_ROOT = 'https://raw.githubusercontent.com/KLUE-benchmark/KLUE/main/klue_be
 # --------------------------------------------------------------------------
 # TC: Topic classification - Yonhap News Agency Topic Classification(YNAT)
 # --------------------------------------------------------------------------
-_KLUE_TC_TRAIN_LINK = os.path.join(_KLUE_ROOT, 'ynat-v1/ynat-v1_train.json')
-_KLUE_TC_DEV_LINK = os.path.join(_KLUE_ROOT, 'ynat-v1/ynat-v1_dev.json')
+_KLUE_TC_TRAIN_LINK = os.path.join(_KLUE_ROOT, 'ynat-v1.1/ynat-v1.1_train.json')
+_KLUE_TC_DEV_LINK = os.path.join(_KLUE_ROOT, 'ynat-v1.1/ynat-v1.1_dev.json')
 _KLUE_TC_DATA_URL = {
     'train': _KLUE_TC_TRAIN_LINK, 'dev': _KLUE_TC_DEV_LINK}
 
@@ -141,9 +141,9 @@ _KLUE_TC_FEATURE_KEYS = ["guid", "title", "label"]
 # STS: Semantic Textual Similarity
 # --------------------------------------------------------------------------
 _KLUE_STS_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-sts-v1/klue-sts-v1_train.json')
+    _KLUE_ROOT, 'klue-sts-v1.1/klue-sts-v1.1_train.json')
 _KLUE_STS_DEV_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-sts-v1/klue-sts-v1_dev.json')
+    _KLUE_ROOT, 'klue-sts-v1.1/klue-sts-v1.1_dev.json')
 _KLUE_STS_DATA_URL = {
     'train': _KLUE_STS_TRAIN_LINK, 'dev': _KLUE_STS_DEV_LINK}
 
@@ -205,9 +205,9 @@ _KLUE_STS_FEATURE_KEYS = ["guid", "sentence1", "sentence2", "label"]
 # NLI: Natural Language Inference
 # --------------------------------------------------------------------------
 _KLUE_NLI_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-nli-v1/klue-nli-v1_train.json')
+    _KLUE_ROOT, 'klue-nli-v1.1/klue-nli-v1.1_train.json')
 _KLUE_NLI_DEV_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-nli-v1/klue-nli-v1_dev.json')
+    _KLUE_ROOT, 'klue-nli-v1.1/klue-nli-v1.1_dev.json')
 _KLUE_NLI_DATA_URL = {
     'train': _KLUE_NLI_TRAIN_LINK, 'dev': _KLUE_NLI_DEV_LINK}
 
@@ -276,9 +276,9 @@ _KLUE_NLI_FEATURE_KEYS = ["guid", "premise", "hypothesis", "gold_label"]
 # --------------------------------------------------------------------------
 
 _KLUE_NER_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-ner-v1/klue-ner-v1_train.tsv')
+    _KLUE_ROOT, 'klue-ner-v1.1/klue-ner-v1.1_train.tsv')
 _KLUE_NER_DEV_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-ner-v1/klue-ner-v1_dev.tsv')
+    _KLUE_ROOT, 'klue-ner-v1.1/klue-ner-v1.1_dev.tsv')
 _KLUE_NER_DATA_URL = {
     'train': _KLUE_NER_TRAIN_LINK, 'dev': _KLUE_NER_DEV_LINK}
 
@@ -359,10 +359,10 @@ _KLUE_NER_FULL_FEATURES = tfds.features.FeaturesDict({
 # RE: Relation Extraction
 # --------------------------------------------------------------------------
 _KLUE_RE_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-re-v1/klue-re-v1_train.json')
-_KLUE_RE_DEV_LINK = os.path.join(_KLUE_ROOT, 'klue-re-v1/klue-re-v1_dev.json')
+    _KLUE_ROOT, 'klue-re-v1.1/klue-re-v1.1_train.json')
+_KLUE_RE_DEV_LINK = os.path.join(_KLUE_ROOT, 'klue-re-v1.1/klue-re-v1.1_dev.json')
 _KLUE_RE_RELATION_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-re-v1/relation_list.json')
+    _KLUE_ROOT, 'klue-re-v1.1/relation_list.json')
 _KLUE_RE_DATA_URL = {
     'train': _KLUE_RE_TRAIN_LINK, 'dev': _KLUE_RE_DEV_LINK, 'relations': _KLUE_RE_RELATION_LINK}
 
@@ -463,8 +463,8 @@ _KLUE_RE_FULL_FEATURES = tfds.features.FeaturesDict({
 # DP: Dependency Parsing
 # --------------------------------------------------------------------------
 _KLUE_DP_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-dp-v1/klue-dp-v1_train.tsv')
-_KLUE_DP_DEV_LINK = os.path.join(_KLUE_ROOT, 'klue-dp-v1/klue-dp-v1_dev.tsv')
+    _KLUE_ROOT, 'klue-dp-v1.1/klue-dp-v1.1_train.tsv')
+_KLUE_DP_DEV_LINK = os.path.join(_KLUE_ROOT, 'klue-dp-v1.1/klue-dp-v1.1_dev.tsv')
 _KLUE_DP_DATA_URL = {
     'train': _KLUE_DP_TRAIN_LINK, 'dev': _KLUE_DP_DEV_LINK}
 
@@ -584,9 +584,9 @@ _KLUE_DP_FULL_FEATURES = tfds.features.FeaturesDict({
 # MRC: Machine Reading Comprehension
 # --------------------------------------------------------------------------
 _KLUE_MRC_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-mrc-v1/klue-mrc-v1_train.json')
+    _KLUE_ROOT, 'klue-mrc-v1.1/klue-mrc-v1.1_train.json')
 _KLUE_MRC_DEV_LINK = os.path.join(
-    _KLUE_ROOT, 'klue-mrc-v1/klue-mrc-v1_dev.json')
+    _KLUE_ROOT, 'klue-mrc-v1.1/klue-mrc-v1.1_dev.json')
 _KLUE_MRC_DATA_URL = {
     'train': _KLUE_MRC_TRAIN_LINK, 'dev': _KLUE_MRC_DEV_LINK}
 
@@ -638,11 +638,11 @@ _KLUE_MRC_FEATURES = tfds.features.FeaturesDict({
 # --------------------------------------------------------------------------
 
 _KLUE_DST_TRAIN_LINK = os.path.join(
-    _KLUE_ROOT, 'wos-v1/wos-v1_train.json')
+    _KLUE_ROOT, 'wos-v1.1/wos-v1.1_train.json')
 _KLUE_DST_DEV_LINK = os.path.join(
-    _KLUE_ROOT, 'wos-v1/wos-v1_dev.json')
+    _KLUE_ROOT, 'wos-v1.1/wos-v1.1_dev.json')
 _KLUE_DST_ONTOLOGY_LINK = os.path.join(
-    _KLUE_ROOT, 'wos-v1/ontology.json')
+    _KLUE_ROOT, 'wos-v1.1/ontology.json')
 _KLUE_DST_DATA_URL = {
     'train': _KLUE_DST_TRAIN_LINK, 'dev': _KLUE_DST_DEV_LINK, 'ontology': _KLUE_DST_ONTOLOGY_LINK}
 
