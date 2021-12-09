@@ -9,6 +9,7 @@ import hashlib
 import functools
 import unicodedata
 import glob
+import re
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -174,12 +175,12 @@ _SPECIALITY_CORPUS_PATENT_A_FEATURE = tfds.features.FeaturesDict({  # 전문분�
     'sentno': tfds.features.Text(),
     'text': tfds.features.Text(),
     'NE': tfds.features.Sequence({
-            'id': tfds.features.Text(),
-            'entity': tfds.features.Text(),
-            'type': tfds.features.Text(),
-            'begin': tf.int32,
-            'end': tf.int32,
-        }),
+        'id': tfds.features.Text(),
+        'entity': tfds.features.Text(),
+        'type': tfds.features.Text(),
+        'begin': tf.int32,
+        'end': tf.int32,
+    }),
 })
 
 _SPECIALITY_CORPUS_LEADING_CASE_FEATURE = tfds.features.FeaturesDict({  # 전문분야 말뭉치 판례
@@ -1143,10 +1144,9 @@ def _patent_n_sentence_list(data_list):
         })
     return result
 
-def _parsing_specialty_corpus_patent_n(file_path):  # 전문분야 말뭉치 특허(숫자 파일)
+def _parsing_specialty_corpus_patent(file_path):  # 전문분야 말뭉치 특허
     with tf.io.gfile.GFile(file_path, mode='r') as f:
         obj = json.load(f)
-        
         for idx, doc in enumerate(obj['data']):
             _idx = idx
             _doc_type = doc['doc_type']
@@ -1156,62 +1156,48 @@ def _parsing_specialty_corpus_patent_n(file_path):  # 전문분야 말뭉치 특
             _reg_no = doc['reg_no']
             _ipc = doc['ipc']
             _attr = doc['attr']
-            _sentno = doc['sentno']
             if 'claim_no' in doc:
                 _claim_no = doc['claim_no']
             else:
                 _claim_no = ''
-            _sentence = _patent_n_sentence_list(doc['sentence'])
-
-            yield _idx, {
-                'idx': _idx,
-                'doc_type': _doc_type,
-                'doc_id': _doc_id,
-                'title': _title,
-                'date': _date,
-                'reg_no': _reg_no,
-                'ipc' : _ipc,
-                "attr": _attr,
-                'sentno': _sentno,
-                'claim_no': _claim_no,
-                'sentence': _sentence,
-            }
-
-def _parsing_specialty_corpus_patent_a(file_path):  # 전문분야 말뭉치 특허(z 파일)
-    with tf.io.gfile.GFile(file_path, mode='r') as f:
-        obj = json.load(f)
-
-        for idx, doc in enumerate(obj['data']):
-            _idx = idx
-            _doc_type = doc['doc_type']
-            _doc_id = doc['doc_id']
-            _title = doc['title']
-            _date = doc['date']
-            _reg_no = doc['reg_no']
-            _author = doc['author']
-            _ipc = doc['ipc']
-            _attr = doc['attr']
-            _claim_no = doc['claim_no']
             _sentno = doc['sentno']
-            _text = doc['text']
-            _NE = _NE_list(doc['NE'])
 
-            yield _idx, {
-                'idx': _idx,
-                'doc_type': _doc_type,
-                'doc_id': _doc_id,
-                'title': _title,
-                'date': _date,
-                'reg_no': _reg_no,
-                'author': _author,
-                'ipc': _ipc,
-                'attr': _attr,
-                'claim_no': _claim_no,
-                'sentno': _sentno,
-                'text': _text,
-                'NE': _NE,
-            }
+            if re.compile(r'특허_[0-9][0-9].json').search(file_path): # number file
+                _sentence = _patent_n_sentence_list(doc['sentence'])
+                yield _idx, {
+                    'idx': _idx,
+                    'doc_type': _doc_type,
+                    'doc_id': _doc_id,
+                    'title': _title,
+                    'date': _date,
+                    'reg_no': _reg_no,
+                    'ipc' : _ipc,
+                    "attr": _attr,
+                    'sentno': _sentno,
+                    'claim_no': _claim_no,
+                    'sentence': _sentence,
+                }
+            else: # z file
+                _author = doc['author']
+                _text = doc['text']
+                _NE = _NE_list(doc['NE'])
 
+                yield _idx, {
+                    'idx': _idx,
+                    'doc_type': _doc_type,
+                    'doc_id': _doc_id,
+                    'title': _title,
+                    'date': _date,
+                    'reg_no': _reg_no,
+                    'author': _author,
+                    'ipc': _ipc,
+                    'attr': _attr,
+                    'claim_no': _claim_no,
+                    'sentno': _sentno,
+                    'text': _text,
+                    'NE': _NE,
+                }
+            
 def _leading_case_sentence_list(data_list):
     result = list()
     for data in data_list:
@@ -1560,7 +1546,10 @@ def _parsing_specialty_ko_ja(file_path):    # 한국어-일본어 번역 말뭉�
             _ko_num_of_phrases = doc['한국어_어절수']
             _ja_num_of_words = doc['일본어_글자수']
             _length_classification = doc['길이_분류']
-            _source = doc['출처']
+            if doc['출처'] is not None:
+                _source = doc['출처']
+            else:
+                _source = ''
             _institution = doc['수행기관']
             
             yield _idx, {
@@ -1589,7 +1578,10 @@ def _parsing_specialty_ko_zh(file_path):    # 한국어-중국어 번역 말뭉�
             _ko_num_of_phrases = doc['한국어_어절수']
             _zh_num_of_words = doc['중국어_글자수']
             _length_classification = doc['길이_분류']
-            _source = doc['출처']
+            if doc['출처'] is not None:
+                _source = doc['출처']
+            else:
+                _source = ''
             _institution = doc['수행기관']
             
             yield _idx, {
@@ -1714,7 +1706,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             data_root=_DATASET_ROOT['document_summary_law'],
             feature=_DOCUMENT_SUMMARY_LAW_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['1.Training/train_법률_data/법률문서/train_original.json'],
-                          tfds.Split.VALIDATION: ['2.Validation/valid_법률_data/법률문서/dev_original.json']},
+                          tfds.Split.VALIDATION: ['2.Validation/vaild_법률_data/법률문서/dev_original.json']},
             reading_fn=_parsing_document_summary_law,
             parsing_fn=lambda x:x,
         ),
@@ -1722,8 +1714,8 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             name='document.summary.editorial.v1.0.split',
             data_root=_DATASET_ROOT['document_summary_editorial'],
             feature=_DOCUMENT_SUMMARY_FEATURE,
-            data_sp_path={tfds.Split.TRAIN: ['1.Training/train_사설잡지_data/train_original.json'],
-                          tfds.Split.VALIDATION: ['2.Validation/valid_사설잡지_data/dev_original.json']},
+            data_sp_path={tfds.Split.TRAIN: ['1.Training/train_사설잡지_data/1.Training/사설잡지/train_original.json'],
+                          tfds.Split.VALIDATION: ['2.Validation/vaild_사설잡지_data/사설잡지/dev_original.json']},
             reading_fn=_parsing_document_summary,
             parsing_fn=lambda x:x,
         ),
@@ -1805,7 +1797,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='specialty_corpus.paper.(v1.0)',
+            name='specialty_corpus.paper.v1.0',
             data_root=_DATASET_ROOT['specialty_corpus'],
             feature=_SPECIALITY_CORPUS_PAPER_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/논문*.json'],
@@ -1815,7 +1807,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='specialty_corpus.statute.(v1.0)',
+            name='specialty_corpus.statute.v1.0',
             data_root=_DATASET_ROOT['specialty_corpus'],
             feature=_SPECIALITY_CORPUS_STATUTE_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/법령*.json'],
@@ -1825,28 +1817,26 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),        
         
         AIHubConfig(
-            name='specialty_corpus.patent_n.(v1.0)',
+            name='specialty_corpus.patent_n.v1.0',
             data_root=_DATASET_ROOT['specialty_corpus'],
             feature=_SPECIALITY_CORPUS_PATENT_N_FEATURE,
             data_sp_path={tfds.Split.TRAIN: [r'Training/특허_[0-9][0-9].json'],
                           tfds.Split.VALIDATION: [r'Validation/특허_[0-9][0-9].json']},
-            reading_fn=_parsing_specialty_corpus_patent_n,
+            reading_fn=_parsing_specialty_corpus_patent,
             parsing_fn=lambda x:x,
         ),
-
         AIHubConfig(
-            name='specialty_corpus.patent_a.(v1.0)',
+            name='specialty_corpus.patent_a.v1.0',
             data_root=_DATASET_ROOT['specialty_corpus'],
             feature=_SPECIALITY_CORPUS_PATENT_A_FEATURE,
-            data_sp_path={tfds.Split.TRAIN: ['Training/특허_z*.json'],
-                          tfds.Split.VALIDATION: ['Validation/특허_z*.json']},
-            reading_fn=_parsing_specialty_corpus_patent_a,
+            data_sp_path={tfds.Split.TRAIN: ['Training/특허_z_*.json']},
+            reading_fn=_parsing_specialty_corpus_patent,
             parsing_fn=lambda x:x,
-            split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
+            split_fn=_DEFAULT_DOWNSTREAMTASK_CORPUS_SPLIT,
         ),
 
         AIHubConfig(
-            name='specialty_corpus.leading_case.(v1.0)',
+            name='specialty_corpus.leading_case.v1.0',
             data_root=_DATASET_ROOT['specialty_corpus'],
             feature=_SPECIALITY_CORPUS_LEADING_CASE_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/판례*.json'],
@@ -1856,7 +1846,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='specialty_ko_en.(v1.0)',
+            name='specialty_ko_en.v1.0',
             data_root=_DATASET_ROOT['specialty_ko_en'],
             feature=_SPECIALITY_KO_EN_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/*.json'],
@@ -1866,7 +1856,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='korean_sns.(v1.0)',
+            name='korean_sns.v1.0',
             data_root=_DATASET_ROOT['korean_sns'],
             feature=_KOREAN_SNS_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['*.json'],
@@ -1877,7 +1867,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='korean_dialog.(v1.0)',
+            name='korean_dialog.v1.0',
             data_root=_DATASET_ROOT['korean_dialog'],
             feature=_KOREAN_DIALOG_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['*.xlsx'],
@@ -1888,7 +1878,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='korean_dialog_summary.(v1.0)',
+            name='korean_dialog_summary.v1.0',
             data_root=_DATASET_ROOT['korean_dialog_summary'],
             feature=_KOREAN_DIALOG_SUMMARY_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/*.json'],
@@ -1898,7 +1888,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='translation_ko_en_tech.(v1.0)',
+            name='translation_ko_en_tech.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_tech'],
             feature=_TRANSLATION_KO_EN_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/*.json'],
@@ -1908,7 +1898,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='translation_ko_en_social.(v1.0)',
+            name='translation_ko_en_social.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_social'],
             feature=_TRANSLATION_KO_EN_FEATURE,
             data_sp_path={tfds.Split.TRAIN: ['Training/*.json'],
@@ -1918,7 +1908,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
         ),
 
         AIHubConfig(
-            name='ko_en_trans_parallel_informal.(v1.0)',
+            name='ko_en_trans_parallel_informal.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_INFORMAL,
             data_sp_path={tfds.Split.TRAIN: ['1_구어체*.xlsx'],
@@ -1928,7 +1918,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='ko_en_trans_parallel_conversational.(v1.0)',
+            name='ko_en_trans_parallel_conversational.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_CONVERSATIONAL,
             data_sp_path={tfds.Split.TRAIN: ['2_대화체.xlsx'],
@@ -1938,7 +1928,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='ko_en_trans_parallel_news.(v1.0)',
+            name='ko_en_trans_parallel_news.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_NEWS,
             data_sp_path={tfds.Split.TRAIN: ['3_문어체_뉴스*.xlsx'],
@@ -1948,7 +1938,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='ko_en_trans_parallel_culture.(v1.0)',
+            name='ko_en_trans_parallel_culture.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_CULTURE,
             data_sp_path={tfds.Split.TRAIN: ['4_문어체_한국문화.xlsx'],
@@ -1958,7 +1948,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='ko_en_trans_parallel_ordinance.(v1.0)',
+            name='ko_en_trans_parallel_ordinance.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_ORDINANCE_WEB,
             data_sp_path={tfds.Split.TRAIN: ['5_문어체_조례.xlsx'],
@@ -1968,7 +1958,7 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
         AIHubConfig(
-            name='ko_en_trans_parallel_web.(v1.0)',
+            name='ko_en_trans_parallel_web.v1.0',
             data_root=_DATASET_ROOT['ko_en_trans_parallel'],
             feature=_TRANSLATION_KO_EN_PARALLEL_ORDINANCE_WEB,
             data_sp_path={tfds.Split.TRAIN: ['6_문어체_지자체웹사이트.xlsx'],
@@ -1977,7 +1967,6 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             parsing_fn=lambda x:x,
             split_fn=_DEFAULT_RAW_CORPUS_SPLIT,
         ),
-
         AIHubConfig(
             name='translation_ko_ja.v1.0',
             data_root=_DATASET_ROOT['ko_ja_trans'],
@@ -1987,7 +1976,6 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             reading_fn=_parsing_specialty_ko_ja,
             parsing_fn=lambda x:x,
         ),
-    
         AIHubConfig(
             name='translation_ko_zh_tech.v1.0',
             data_root=_DATASET_ROOT['ko_zh_trans_tech'],
@@ -1997,7 +1985,6 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
             reading_fn=_parsing_specialty_ko_zh,
             parsing_fn=lambda x:x,
         ),
-
         AIHubConfig(
             name='translation_ko_zh_social.v1.0',
             data_root=_DATASET_ROOT['ko_zh_trans_social'],
@@ -2015,69 +2002,68 @@ class AIHub(tfds.core.GeneratorBasedBuilder):
     all the data have to located under manual_dir/AIHub.
     This is dataset and path pairs. (all the paths are case-sensitive!)
     ============================================
-    COMMON_SQUAD(v1.0): manual_dir/AIHub/common/nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json
-    PAPER_SUMMARY(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_논문/*.json
+    COMMON_SQUADv1.0: manual_dir/AIHub/common/nia_common_02_squad_질문, 답변, 제시문 말뭉치/ko_wiki_v1_squad.json
+    PAPER_SUMMARYv1.0: manual_dir/AIHub/논문자료 요약/Training/training_논문/*.json
                          manual_dir/AIHub/논문자료 요약/Validation/validation_논문/*.json
-    PAPER_PATENT_SECTION(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_특허섹션만/*.json
+    PAPER_PATENT_SECTIONv1.0: manual_dir/AIHub/논문자료 요약/Training/training_특허섹션만/*.json
                                 manual_dir/AIHub/논문자료 요약/Validation/validation_특허섹션만/*.json
-    PAPER_PATENT_TOTAL(v1.0): manual_dir/AIHub/논문자료 요약/Training/training_특허전체/*.json
+    PAPER_PATENT_TOTALv1.0: manual_dir/AIHub/논문자료 요약/Training/training_특허전체/*.json
                               manual_dir/AIHub/논문자료 요약/Validation/validation_특허전체/*.json
-    DOCUMENT_SUMMARY_LAW(v1.0): manual_dir/AIHub/문서요약 텍스트/1.Training/train_법률_data/법률문서/train_original.json
+    DOCUMENT_SUMMARY_LAWv1.0: manual_dir/AIHub/문서요약 텍스트/1.Training/train_법률_data/법률문서/train_original.json
                                 manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_법률_data/법률문서/dev_original.json
-    DOCUMENT_SUMMARY_EDITORIAL(v1.0): manual_dir/AIHub/문서요약 텍스트/1.Training/train_사설잡지_data/train_original.json
-                                      manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_사설잡지_data/dev_original.json
-    EMOTIONAL_TALK(v1.0): manual_dir/AIHub/감성대화/Training/감성대화말뭉치(최종데이터)_Training/감성대화말뭉치(최종데이터)_Training.json
+    DOCUMENT_SUMMARY_EDITORIALv1.0: manual_dir/AIHub/문서요약 텍스트/1.Training/train_사설잡지_data/1.Training/사설잡지/train_original.json
+                                      manual_dir/AIHub/문서요약 텍스트/2.Validation/valid_사설잡지_data/사설잡지/dev_original.json
+    EMOTIONAL_TALKv1.0: manual_dir/AIHub/감성대화/Training/감성대화말뭉치(최종데이터)_Training/감성대화말뭉치(최종데이터)_Training.json
                           manual_dir/AIHub/감성대화/Validation/감성대화말뭉치(최종데이터)_Validation/감성대화말뭉치(최종데이터)_Validation.json
-    DIALOG(v1.0): manual_dir/AIHub/dialog/01_dialog/dialog/dialog.json
-    DIALOG_INTENT(v1.0): manual_dir/AIHub/dialog/02_intent/intent/intent.json
-    DIALOG_HEADWORD(v1.0): manual_dir/AIHub/dialog/03_headword/headword/headword.json
-    DIALOG_KNOWLEDGE(v1.0): manual_dir/AIHub/dialog/04_knowledge/knowledge/knowledge.json
+    DIALOGv1.0: manual_dir/AIHub/dialog/01_dialog/dialog/dialog.json
+    DIALOG_INTENTv1.0: manual_dir/AIHub/dialog/02_intent/intent/intent.json
+    DIALOG_HEADWORDv1.0: manual_dir/AIHub/dialog/03_headword/headword/headword.json
+    DIALOG_KNOWLEDGEv1.0: manual_dir/AIHub/dialog/04_knowledge/knowledge/knowledge.json
     
-    specialty_corpus.paper.(v1.0): manual_dir/AIHub/전문분야 말뭉치/Training/논문*.json
+    specialty_corpus.paper.v1.0: manual_dir/AIHub/전문분야 말뭉치/Training/논문*.json
                                    manual_dir/AIHub/전문분야 말뭉치/Validation/논문*.json
                                    
-    specialty_corpus.statute.(v1.0): manual_dir/AIHub/전문분야 말뭉치/Training/법령*.json
+    specialty_corpus.statute.v1.0: manual_dir/AIHub/전문분야 말뭉치/Training/법령*.json
                                      manual_dir/AIHub/전문분야 말뭉치/Validation/법령*.json
 
-    specialty_corpus.patent_n.(v1.0): manual_dir/AIHub/전문분야 말뭉치/Training/Training/특허_[0-9].json
-                                      manual_dir/AIHub/전문분야 말뭉치/Validation/특허_[0-9].json
+    specialty_corpus.patent_n.v1.0: manual_dir/AIHub/전문분야 말뭉치/Training/특허_[0-9][0-9].json
+                                      manual_dir/AIHub/전문분야 말뭉치/Validation/특허_[0-9][0-9].json
 
-    specialty_corpus.patent_a.(v1.0): manual_dir/AIHub/전문분야 말뭉치/Training/특허_z*.json
-                                      manual_dir/AIHub/전문분야 말뭉치/Validation/특허_z*.json
+    specialty_corpus.patent_a.v1.0: manual_dir/AIHub/전문분야 말뭉치/Training/특허_z_*.json
 
-    specialty_corpus.leading_case.(v1.0): manual_dir/AIHub/전문분야 말뭉치/Training/판례*.json
+    specialty_corpus.leading_case.v1.0: manual_dir/AIHub/전문분야 말뭉치/Training/판례*.json
                                           manual_dir/AIHub/전문분야 말뭉치/Validation/판례*.json
 
-    specialty_ko_en.(v1.0): manual_dir/AIHub/전문분야한영/Training/*.json
+    specialty_ko_en.v1.0: manual_dir/AIHub/전문분야한영/Training/*.json
                             manual_dir/AIHub/전문분야한영/Validation/*.json  
 
-    korean_sns.(v1.0): manual_dir/AIHub/한국어 SNS/Training/*.json
+    korean_sns.v1.0: manual_dir/AIHub/한국어 SNS/Training/*.json
 
-    korean_dialog.(v1.0): manual_dir/AIHub/한국어 대화/*.xlsx
+    korean_dialog.v1.0: manual_dir/AIHub/한국어 대화/*.xlsx
 
-    korean_dialog_summary.(v1.0): manual_dir/AIHub/한국어 대화 요약/Training/*.json
+    korean_dialog_summary.v1.0: manual_dir/AIHub/한국어 대화 요약/Training/*.json
                                   manual_dir/AIHub/한국어 대화 요약/Validation/*.json  
 
-    translation_ko_en_tech.(v1.0): manual_dir/AIHub/한국어-영어 번역 말뭉치(기술과학)/Training/*.json
+    translation_ko_en_tech.v1.0: manual_dir/AIHub/한국어-영어 번역 말뭉치(기술과학)/Training/*.json
                                    manual_dir/AIHub/한국어-영어 번역 말뭉치(기술과학)/Validation/*.json
 
-    translation_ko_en_social.(v1.0): manual_dir/AIHub/한국어-영어 번역 말뭉치(사회과학)/Training/*.json
+    translation_ko_en_social.v1.0: manual_dir/AIHub/한국어-영어 번역 말뭉치(사회과학)/Training/*.json
                                      manual_dir/AIHub/한국어-영어 번역 말뭉치(사회과학)/Validation/*.json
 
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/1_구어체*.xlsx
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/2_대화체.xlsx
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/3_문어체_뉴스*.xlsx
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/4_문어체_한국문화.xlsx
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/5_문어체_조례.xlsx
-    ko_en_trans_parallel_informal.(v1.0): manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/6_문어체_지자체웹사이트.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/1_구어체*.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/2_대화체.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/3_문어체_뉴스*.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/4_문어체_한국문화.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/5_문어체_조례.xlsx
+    ko_en_trans_parallel_informal.v1.0: manual_dir/AIHub/한국어-영어 번역(병렬) 말뭉치/6_문어체_지자체웹사이트.xlsx
 
-    translation_ko_ja.(v1.0): manual_dir/AIHub/한국어-일본어 번역 말뭉치/Training/*.json
+    translation_ko_ja.v1.0: manual_dir/AIHub/한국어-일본어 번역 말뭉치/Training/*.json
                               manual_dir/AIHub/한국어-일본어 번역 말뭉치/Validation/*.json
 
-    translation_ko_zh_tech.(v1.0): manual_dir/AIHub/한국어-중국어 번역 말뭉치(기술과학)/Training/*.json
+    translation_ko_zh_tech.v1.0: manual_dir/AIHub/한국어-중국어 번역 말뭉치(기술과학)/Training/*.json
                                    manual_dir/AIHub/AIHub/한국어-중국어 번역 말뭉치(기술과학)/Validation/*.json
 
-    translation_ko_zh_tech.(v1.0): manual_dir/AIHub/한국어-중국어 번역 말뭉치(사회과학)/Training/*.json
+    translation_ko_zh_tech.v1.0: manual_dir/AIHub/한국어-중국어 번역 말뭉치(사회과학)/Training/*.json
                                    manual_dir/AIHub/한국어-중국어 번역 말뭉치(사회과학)/Validation/*.json
                                                         
     ============================================
